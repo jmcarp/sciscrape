@@ -5,13 +5,6 @@ import re
 import requests
 from pyquery import PyQuery
 
-def isfloat(s):
-    try:
-        f = float(s)
-        return True
-    except ValueError:
-        return False
-
 class PDFExtractor(object):
     '''Base class for extracting information from
     PDFs using PDFx.
