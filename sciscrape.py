@@ -56,7 +56,7 @@ class SciScrape(object):
     
     def scrape(self, doi=None, pmid=None):
         
-        # Initialize ScrapeInfo
+        # Initialize ScrapeInfo object to store results
         self.info = ScrapeInfo(doi, pmid)
         
         # Get publisher link
@@ -79,16 +79,19 @@ class SciScrape(object):
             get_success = getter.get(self.info, self.browser)
             if get_success:
                 self.info.docs[doc_type] = self.info.html
-
+        
+        # Return ScrapeInfo object
         return self.info
 
     def _resolve_doi(self, doi):
+        '''Follow DOI link, store HTML, and return final URL.'''
         
         self.browser.open('%s/%s' % (self._doi_url, doi))
         self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
         return self.browser.geturl()
 
     def _resolve_pmid(self, pmid):
+        '''Follow PMID link, store HTML, and return final URL.'''
         
         # Get DOI from PubMed API
         pminfo = pubtools.pmid_to_document(pmid)
