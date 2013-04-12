@@ -6,7 +6,6 @@ import urlparse
 import mechanize
 from pyquery import PyQuery
 
-#class PubBrowser(mechanize.Browser):
 class PubBrowser(object):
         
     class NoHistory(object):
@@ -20,7 +19,7 @@ class PubBrowser(object):
         
         # Initialize Browser
         self._b = mechanize.Browser(history=self.NoHistory())
-
+        
         # Set headers
         self._b.addheaders = [
             ('User-Agent', 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT)'),
@@ -32,8 +31,10 @@ class PubBrowser(object):
     def get_docs(self):
         '''Extract raw and parsed text from browser.'''
         
+        url = self.geturl()
+
         # Get base URL
-        base_url = urlparse.urljoin(self.geturl(), '_').strip('_')
+        base_url = urlparse.urljoin(url, '_').strip('_')
 
         # Get browser text
         text = self._b.response().read()
