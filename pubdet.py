@@ -4,6 +4,8 @@ import utils
 from pyquery import PyQuery
 
 def pubdet(html):
+    '''Detect publisher from HTML document.'''
+
     publisher = None
     for detklass in PubDetector.__inheritors__:
         detobj = detklass()
@@ -14,10 +16,13 @@ class PubDetector(object):
     '''Base class for publisher detectors.'''
 
     class __metaclass__(type):
+        '''Custom metaclass to track inheritors.'''
 
         __inheritors__ = []
         
         def __new__(meta, name, bases, dct):
+            '''When creating a subclass, add to __inheritors__ if 
+            _name class property is defined.'''
             klass = type.__new__(meta, name, bases, dct)
             try:
                 _name = klass()._name
@@ -32,28 +37,37 @@ class PubDetector(object):
 
     def detect(self, html):
         raise NotImplementedError('Subclasses must implement detect()')
+
+######################################
+# PubDetectors based on <title> tags #
+######################################
+
+class TitlePubDetector(PubDetector):
+    '''Base class for <title> tag detectors.'''
     
-class ElsevierDetector(PubDetector):
+    _flags = re.I
+
+    def detect(self, html):
+
+        title = PyQuery(html)('title')
+        if title:
+            return bool(re.search(self._regex, title.text(), self._flags))
+        return False
+    
+class ElsevierDetector(TitlePubDetector):
     
     _name = 'elsevier'
+    _regex = 'sciencedirect'
 
-    def detect(self, html):
-        
-        title = PyQuery(html)('title')
-        if title:
-            return bool(re.search('sciencedirect', title.text(), re.I))
-        return False
-
-class Springer(PubDetector):
+class Springer(TitlePubDetector):
     
     _name = 'springer'
+    _regex = 'springer'
 
-    def detect(self, html):
-        
-        title = PyQuery(html)('title')
-        if title:
-            return bool(re.search('springer', title.text(), re.I))
-        return False
+class WoltersKluwer(TitlePubDetector):
+    
+    _name = 'wolterskluwer'
+    _regex = 'wolters kluwer'
 
 #####################################
 # PubDetectors based on <meta> tags #
@@ -90,6 +104,14 @@ class ThiemeDetector(MetaPubDetector):
     _attrs = [
         ['name', 'citation_publisher'],
         ['content', 'Thieme Medical Publishers'],
+    ]
+
+class APA(MetaPubDetector):
+    
+    _name = 'apa'
+    _attrs = [
+        ['name', 'citation_publisher'],
+        ['content', 'American Psychological Association'],
     ]
 
 class BMCDetector(MetaPubDetector):
