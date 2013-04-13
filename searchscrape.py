@@ -5,26 +5,13 @@ import os
 import pubtools
 import sciscrape
 
-# Sample queries
-
-query_nimg = \
-    'fmri ' + \
-    'AND neuroimage[journal]'
-
-query_jon = \
-    'fmri ' + \
-    'AND "j neurosci"[journal]'
-
-query_plos = \
-    'fmri ' + \
-    'AND "plos one"[journal]'
-
-def searchscrape(query, out_dir, **kwargs):
+def searchscrape(query, out_dir, scrape_klass=sciscrape.SciScrape, **kwargs):
     '''Run PubMed query, then download articles.
 
     Args:
         query (str) : PubMed search query
         out_dir (str) : Output directory for documents
+        scrape_klass (SciScrape) : Scraper type
         kwargs: Optional arguments for PubMed search
     Returns:
         None
@@ -43,7 +30,7 @@ def searchscrape(query, out_dir, **kwargs):
     pmids = searcher.search(query, **kwargs)
     
     # Initialize scraper
-    scraper = sciscrape.SciScrape()
+    scraper = scrape_klass()
 
     # Loop over articles
     for pmid in pmids:
