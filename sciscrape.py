@@ -31,6 +31,14 @@ getter_map['thieme'] = {
     'html' : getters.ThiemeHTMLGetter,
     'pdf' : getters.ThiemePDFGetter,
 }
+getter_map['apa'] = {
+    'html' : getters.APAHTMLGetter,
+    'pdf' : getters.APAPDFGetter,
+}
+getter_map['wolterskluwer'] = {
+    'html' : getters.WoltersKluwerHTMLGetter,
+    'pdf' : getters.WoltersKluwerPDFGetter,
+}
 
 class ScrapeInfo(object):
     
@@ -49,9 +57,12 @@ class SciScrape(object):
     _doi_url = 'http://dx.doi.org'
     _pubmed_url = 'http://www.ncbi.nlm.nih.gov/pubmed'
 
+    # Browser class
+    _browser_klass = mechtools.PubBrowser
+
     def __init__(self):
         
-        self.browser = mechtools.UMBrowser()
+        self.browser = self._browser_klass()#mechtools.UMBrowser()
         self.info = ScrapeInfo()
     
     def scrape(self, doi=None, pmid=None):
@@ -75,6 +86,8 @@ class SciScrape(object):
         # Get documents
         getters = getter_map[self.info.publisher]
         for doc_type in getters:
+            if self.browser.geturl() != pub_link:
+                self.browser.open(pub_link)
             getter = getters[doc_type]()
             get_success = getter.get(self.info, self.browser)
             if get_success:
@@ -96,6 +109,7 @@ class SciScrape(object):
         # Get DOI from PubMed API
         pminfo = pubtools.pmid_to_document(pmid)
         if 'doi' in pminfo:
+            print 'foo', pminfo['doi']
             return self._resolve_doi(pminfo['doi'])
         
         # Get publisher link from PubMed site
@@ -103,5 +117,11 @@ class SciScrape(object):
         html, qhtml = self.browser.get_docs()
         pub_link = qhtml('a[title^=Full text]').attr('href')
         if pub_link:
+            print 'bar', pub_link
             self.browser.open(pub_link)
             self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
+
+class UMSciScrape(SciScrape):
+    
+    _browser_klass = mechtools.UMBrowser
+
