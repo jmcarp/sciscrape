@@ -1,16 +1,13 @@
 # Imports
 import os
 import operator
-import unittest
 
 # Project imports
-#import pdfx
 import sciparse
 
 def read_tables_csv(csv_name):
     
     csv_tables = []
-    #table = pdfx.Table([], [])
     table = sciparse.Table(None)
     csv_lines = open(csv_name).read().split('\r')
 
@@ -21,7 +18,6 @@ def read_tables_csv(csv_name):
             table.add_coord(*line_split)
         else:
             csv_tables.append(table)
-            #table = pdfx.Table([], [])
             table = sciparse.Table(None)
     if len(table.coords):
         csv_tables.append(table)
@@ -47,23 +43,6 @@ def compare_table_groups(tref, tcmp):
         'fp' : fp,
         'fn' : fn,
     }
-
-class TestTable(unittest.TestCase):
-    pass
-
-def test_generator(article_name):
-    
-    pdf_name = '%s.pdf' % (article_name)
-    csv_name = '%s.csv' % (article_name)
-
-    pdf_tables = pdfx.MRITableExtractor()\
-        .pdf_to_mri_tables(pdf_name=pdf_name)
-
-    csv_tables = read_tables_csv(csv_name)
-
-    def test(self):
-        self.assertEqual(pdf_tables, csv_tables)
-    return test
 
 pdf_dir = '/Users/jmcarp/Desktop/pdf-parse-sample'
 journal = 'jocn'
@@ -91,8 +70,6 @@ def run_cmps():
         pdf_name = '%s.pdf' % (doc_full)
         csv_name = '%s.csv' % (doc_full)
 
-        #pdf_tables = pdfx.MRITableExtractor()\
-        #    .pdf_to_mri_tables(pdf_name=pdf_name)
         with open(pdf_name, 'rb') as pdf:
             pdf_tables = sciparse.TableParse().parse(pdf)
         csv_tables = read_tables_csv(csv_name)
@@ -100,10 +77,3 @@ def run_cmps():
         cmps.append(compare_table_groups(csv_tables, pdf_tables))
         
     return cmps
-
-def run_tests():
-    for doc in docs:
-        test_name = 'test_%s' % (doc)
-        test = test_generator(os.path.join(pdf_dir, journal, doc))
-        setattr(TestTable, test_name, test)
-    unittest.main()
