@@ -36,7 +36,7 @@ def searchscrape(query, out_dir, scrape_klass=sciscrape.SciScrape, **kwargs):
     for pmid in pmids:
         
         print 'Working on article %s...' % (pmid)
-
+        
         # Scrape article documents
         info = scraper.scrape(pmid=pmid)
 
