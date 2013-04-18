@@ -1,0 +1,15 @@
+BeautifulSoup
+biopython
+cssselect
+ipython
+lxml
+mechanize
+numpy
+pandas
+pyPdf
+pyquery
+python-dateutil
+pytz
+requests
+six
+wsgiref
