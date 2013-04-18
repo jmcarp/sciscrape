@@ -1,4 +1,6 @@
 # Imports
+import re
+import urllib2
 import collections
 
 # Project imports
@@ -40,6 +42,8 @@ getter_map['wolterskluwer'] = {
     'pdf' : getters.WoltersKluwerPDFGetter,
 }
 
+class BadDOIException(Exception): pass
+
 class ScrapeInfo(object):
     
     def __init__(self, doi=None, pmid=None):
@@ -50,6 +54,7 @@ class ScrapeInfo(object):
 
         # Initialize documents
         self.docs = {}
+        self.status = {}
 
 class SciScrape(object):
     
@@ -89,9 +94,12 @@ class SciScrape(object):
             if self.browser.geturl() != pub_link:
                 self.browser.open(pub_link)
             getter = getters[doc_type]()
-            get_success = getter.get(self.info, self.browser)
-            if get_success:
+            try:
+                get_success = getter.reget(self.info, self.browser)
                 self.info.docs[doc_type] = self.info.html
+                self.info.status[doc_type] = 'Success'
+            except Exception as e:
+                self.info.status[doc_type] = 'Fail', e.message
         
         # Return ScrapeInfo object
         return self.info
@@ -99,8 +107,22 @@ class SciScrape(object):
     def _resolve_doi(self, doi):
         '''Follow DOI link, store HTML, and return final URL.'''
         
-        self.browser.open('%s/%s' % (self._doi_url, doi))
+        # Try to open DOI link, else raise BadDOIException
+        try:
+            self.browser.open('%s/%s' % (self._doi_url, doi))
+        except urllib2.HTTPError:
+            raise BadDOIException
+        
+        # Read documents
         self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
+        
+        # Check for bad DOI
+        if re.search('doi not found',
+                     self.info.init_qhtml('title').text(),
+                     re.I):
+            raise BadDOIException
+        
+        # Return URL
         return self.browser.geturl()
 
     def _resolve_pmid(self, pmid):
@@ -109,7 +131,6 @@ class SciScrape(object):
         # Get DOI from PubMed API
         pminfo = pubtools.pmid_to_document(pmid)
         if 'doi' in pminfo:
-            print 'foo', pminfo['doi']
             return self._resolve_doi(pminfo['doi'])
         
         # Get publisher link from PubMed site
@@ -117,7 +138,6 @@ class SciScrape(object):
         html, qhtml = self.browser.get_docs()
         pub_link = qhtml('a[title^=Full text]').attr('href')
         if pub_link:
-            print 'bar', pub_link
             self.browser.open(pub_link)
             self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
 
