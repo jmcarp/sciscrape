@@ -5,7 +5,11 @@ import urlparse
 from pyquery import PyQuery
 
 # Project imports
+import retry
 import utils
+
+class NoAccessException(Exception): pass
+class BadDocumentException(Exception): pass
 
 class AccessRule(object):
     '''Base class for access checkers.'''
@@ -27,7 +31,8 @@ class ElsevierAccessRule(AccessRule):
     '''Custom black-list rule for Elsevier HTML documents.'''
     
     def __call__(self, text, qtext):
-        return not bool(qtext('.svArticle'))
+        return not bool(qtext('.svArticle.section'))
+        #return not bool(qtext('.svArticle'))
 
 class DocGetter(object):
     '''Base class for document getters.'''
@@ -68,7 +73,7 @@ class DocGetter(object):
             if bfun(text, qtext):
                 return False
 
-        # If no hist, article is valid
+        # If no hits, article is valid
         return True
 
     def get(self, cache, browser):
@@ -86,15 +91,17 @@ class DocGetter(object):
         
         # Check access
         if not self.check_access(cache.html, cache.qhtml):
-            print 'Fail: Bad access'
-            return False
+            raise NoAccessException('No access')
 
         # Validate result
         if not self.validate(cache.html):
-            print 'Fail: Bad validation'
-            return False
+            raise BadDocumentException('Bad document')
         
         return True
+    
+    @retry.retry(Exception)
+    def reget(self, cache, browser):
+        return self.get(cache, browser)
 
 class MetaGetter(DocGetter):
     '''Base class for getters that use <meta> tags.'''
@@ -147,7 +154,7 @@ class ElsevierHTMLGetter(HTMLGetter):
     
     _access_blist = [
         ElsevierAccessRule(),
-    ] + HTMLGetter._access_blist
+    ] + DocGetter._access_blist
 
     def get_link(self, cache, browser):
         
@@ -249,6 +256,10 @@ class APAPDFGetter(APAGetter, PDFGetter):
 
 class WoltersKluwerGetter(DocGetter):
     
+    _access_blist = [
+        RegexAccessRule('the limit for concurrent users'),
+    ] + DocGetter._access_blist
+
     _base_url = 'http://ovidsp.ovid.com/ovidweb.cgi?' + \
         'T=JS&MODE=ovid&NEWS=n&PAGE=fulltext&D=ovft&SEARCH='
 
@@ -263,13 +274,20 @@ class WoltersKluwerGetter(DocGetter):
         if 'an' in url_params:
             ovid_search = '%s.an.' % \
                 (url_params['an'])
-        else:
+        elif all([p in url_params for p in 
+                 ['issn', 'volume', 'issue', 'spage']]):
             ovid_search = '%s.is+and+%s.vo+and+%s.ip+and+%s.pg.' % \
                 (url_params['issn'], url_params['volume'],
                 url_params['issue'], url_params['spage'])
+        else:
+            raise NoAccessException('No access')
         
         # Return full-text URL
         return self._base_url + ovid_search
+    
+    @retry.retry(Exception, delay=180)
+    def reget(self, cache, browser):
+        return self.get(cache, browser)
 
 class WoltersKluwerHTMLGetter(WoltersKluwerGetter, HTMLGetter):
     
