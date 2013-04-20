@@ -1,3 +1,10 @@
+'''
+Utilities for emulating a web browser. The PubBrowser class
+controls a mechanize.Browser instance to load pages, download
+documents, redirect requests through library proxy servers,
+and other miscellaneous utilities.
+'''
+
 # Import modules
 import os
 import re

@@ -1,3 +1,7 @@
+'''
+Utilities for querying the PubMed API.
+'''
+
 # Imports
 import re
 import copy

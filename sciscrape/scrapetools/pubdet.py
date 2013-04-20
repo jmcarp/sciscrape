@@ -1,7 +1,15 @@
+'''
+Utilities for detecting the publisher of a given document. Users
+will typically only use the pubdet() function. Other functions
+and classes describe detection rules for specific publishers.
+'''
+
 # Imports
 import re
-import utils
 from pyquery import PyQuery
+
+# Project imports
+from sciscrape.utils import utils
 
 def pubdet(html):
     '''Detect publisher from HTML document.'''
@@ -53,6 +61,31 @@ class MetaPubDetector(PubDetector):
         # Call super constructor
         super(MetaPubDetector, self).__init__(name, fun)
 
+class RegexMetaPubDetector(PubDetector):
+    
+    _flags = re.I
+
+    def __init__(self, name, attrs):
+        
+        def fun(html):
+
+            q = PyQuery(html)('meta')
+
+            for pr in attrs:
+
+                def flt():
+                    for attrib in this.attrib:
+                        if re.search(pr[0], attrib, self._flags) \
+                                and re.search(pr[1], this.attrib[attrib], self._flags):
+                            return True
+                    return False
+
+                q = q.filter(flt)
+
+            return bool(q)
+
+        super(RegexMetaPubDetector, self).__init__(name, fun)
+
 # Define detectors based on <title> tag
 TitlePubDetector('elsevier', 'sciencedirect')
 TitlePubDetector('springer', 'springer')
@@ -83,11 +116,16 @@ MetaPubDetector('royal', [
         ['content', 'The Royal Society'],
     ]
 )
-MetaPubDetector('mit', [
-        ['name', 'dc.Publisher'],
-        ['content', 'MIT Press'],
+#MetaPubDetector('mit', [
+#        ['name', 'dc.Publisher'],
+#        ['content', 'MIT Press'],
+#    ],
+#    ['=', '^='],
+#)
+RegexMetaPubDetector('mit', [
+        ['name', 'dc.publisher'],
+        ['content', 'mit press'],
     ],
-    ['=', '^='],
 )
 MetaPubDetector('npg', [
         ['name', 'DC.publisher'],

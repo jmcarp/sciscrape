@@ -1,3 +1,7 @@
+'''
+Utilities to download documents from various publishers.
+'''
+
 # Imports
 import re
 import json
@@ -5,9 +9,11 @@ import urlparse
 from pyquery import PyQuery
 
 # Project imports
-import retry
-import utils
+from sciscrape.utils import retry
+from sciscrape.utils import utils
 
+# Define exceptions
+class NotFoundException(Exception): pass
 class NoAccessException(Exception): pass
 class BadDocumentException(Exception): pass
 
@@ -99,7 +105,7 @@ class DocGetter(object):
         
         return True
     
-    @retry.retry(Exception)
+    #@retry.retry(Exception)
     def reget(self, cache, browser):
         return self.get(cache, browser)
 
@@ -315,6 +321,45 @@ class WoltersKluwerPDFGetter(WoltersKluwerGetter, PDFGetter):
         
         # Get PDF link
         return qhtml('iframe').attr('src')
+
+#############
+# MIT Press #
+#############
+
+class MITHTMLGetter(HTMLGetter):
+    
+    def get_link(self, cache, browser):
+        
+        #def flt():
+        #    print this
+        #    print this.attrib
+        #    return re.search('/full/', PyQuery(this).attr('href'), re.I)
+        #a = cache.init_qhtml('a.header4[href]').filter(flt)
+        a = cache.init_qhtml('a.header4[href]').filter(
+            lambda: re.search('/full/', PyQuery(this).attr('href'), re.I)
+        )
+        try:
+            link = a.attr('href')
+            if link is not None:
+                return link
+            raise
+        except:
+            raise NotFoundException('Link not found')
+
+class MITPDFGetter(PDFGetter):
+    
+    def get_link(self, cache, browser):
+
+        a = cache.init_qhtml('a.header4[href]').filter(
+            lambda: re.search('/pdf(plus)?/', PyQuery(this).attr('href'), re.I)
+        )
+        try:
+            link = PyQuery(a[-1]).attr('href')
+            if link is not None:
+                return link
+            raise NotFoundException('Link not found')
+        except:
+            raise NotFoundException('Link not found')
 
 #############################
 # Thieme Medical Publishers #

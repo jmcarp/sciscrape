@@ -1,17 +1,40 @@
+'''
+
+'''
+
+
 # Imports
 import re
 import pandas as pd
 from pyquery import PyQuery
 
 # Project imports
-import pdfx
+from sciscrape.pdftools import pdfx
+
+# Utility functions
 
 def isfloat(s):
+    '''Check whether string can be converted to a float.'''
+
     try:
         f = float(s)
         return True
     except ValueError:
         return False
+
+def get_coord_groups(headers):
+    '''Get contiguous, ordered groups of x, y, z columns from headers.'''
+    
+    # Initialize coordinate groups
+    coord_groups = []
+    
+    # Loop over headers
+    for idx in range(len(headers) - 2):
+        if headers[idx:idx+3] == ['x', 'y', 'z']:
+            coord_groups.append(range(idx, idx + 3))
+
+    # Return coordinate groups
+    return coord_groups
 
 class SciParse(object):
     
@@ -41,20 +64,14 @@ class Table(object):
         except Exception as e:
             print e.message
             self._ext = None
+        
+        # Get coordinate groups
+        self._coord_groups = get_coord_groups(self._header)
 
         # Extract coordinates
-        xidx = [i for i in range(len(self._header)) if self._header[i] == 'x']
-        yidx = [i for i in range(len(self._header)) if self._header[i] == 'y']
-        zidx = [i for i in range(len(self._header)) if self._header[i] == 'z']
-        idx_ct = [len(idx) for idx in [xidx, yidx, zidx]]
-        min_ct = min(idx_ct)
         for row in self._data:
-            for idx in range(min_ct):
-                self.add_coord(
-                    row[xidx[idx]],
-                    row[yidx[idx]],
-                    row[zidx[idx]]
-                )
+            for coord_group in self._coord_groups:
+                self.add_coord(*[row[coord] for coord in coord_group])
 
     def __eq__(self, other):
 
@@ -106,7 +123,7 @@ class Coord(object):
         return 'Coord(%r, %r, %r)' % \
             (self.x, self.y, self.z)
 
-class TableParse(PDFParse):
+class PDFTableParse(PDFParse):
     
     # Translation table
     _trans = [ 
@@ -145,6 +162,7 @@ class TableParse(PDFParse):
             self._sort_cols(data_table)
             self._to_float(data_table)
             
+            #print data_table
             coord_table = Table(data_table)
             coord_tables.append(coord_table)
 
@@ -156,6 +174,7 @@ class TableParse(PDFParse):
         # Initialize table
         parsed_rows = []
         
+        # Parse table
         qtable = PyQuery(table)
 
         # Get headers
@@ -192,7 +211,9 @@ class TableParse(PDFParse):
         }
 
     def _consolidate_tables(self, qtables):
-        '''Merge tables by ID number. Unifies cross-page tables.'''
+        '''When tables are split across pages, PDFX assigns them the same
+        "number" attribute. This method identifies unique table groups by number,
+        then groups all tables by number.'''
 
         # Get table numbers
         numbers = [PyQuery(t).attr('number') for t in qtables]
@@ -210,36 +231,76 @@ class TableParse(PDFParse):
 
         # Return consolidated tables
         return ctables
-        
+    
+    # Max number of <thead> / <tr> tags to check
+    # for headers
+    _max_header_tries = 5
+
     def _get_headers(self, xml_table):
-        '''Get table headers.'''
+        '''Extract headers from table. Headers may be stored in the
+        <thead> element, or in one or more <tr> elements, or in an
+        <h1 class="table"> element preceding the table. This method checks
+        all of the above until it finds a valid table header (verified
+        using the _is_mri_header() method).'''
         
-        # Get headers from <th> tags
+        # Parse table
         qtable = PyQuery(xml_table)
-        thead = qtable.find('thead')
-        if thead:
-            headers = PyQuery(thead[0]).find('th').map(self._get_text)[:]
-            headers = [h.lower() for h in headers]
+
+        # Get headers from <thead> / <tr> tags
         
+        # Get <thead> / <tr> tags
+        trs = qtable.find('thead,tr')
+
+        # Check up to _max_header_tries or the number of
+        # <thead> / <tr> tags, whichever is least
+        ntry = min(trs.length, self._max_header_tries)
+        
+        # Loop over rows in reverse order
+        # Deals with empty / incomplete headers at the
+        # top of the table
+        for tryidx in range(ntry, 0, -1):
+            
+            # Extract text from <th> / <td> children
+            headers = PyQuery(trs[tryidx])('th,td')\
+                .map(self._get_text)[:]
+            #headers = [h.lower() for h in headers]
+            
+            # Done if current value is a valid header
+            if self._is_mri_header(headers):
+                return headers
+
         # Get headers from <h1 class="table"> tags
-        if not headers or \
-                any([isfloat(h) for h in headers]):
-            h1_table = qtable.prev('h1.table').text()
-            if h1_table:
-                headers = re.split('\s+', h1_table)
+        h1_table = qtable.prev('h1.table').text()
+        if h1_table:
+            headers = re.split('\s+', h1_table)
+            #headers = [h.lower() for h in headers]
+            # Done if current value is a valid header
+            if self._is_mri_header(headers):
+                return headers
         
-        return headers
+        # No headers found
+        return []
 
     def _clean_headers(self, data_table):
         '''Clean up headers.'''
         
         for hidx, header in enumerate(data_table['headers']):
+
+            # Remove parenthetical values
             header = re.sub('\(.*?\)', '', header)
+
+            # Remove commas
             header = re.sub('[,]', '', header)
+
+            # To lower-case
             header = header.lower()
+
+            # Remove leading / trailing whitespace
             header = header.strip()
+
+            # Done
             data_table['headers'][hidx] = header
-        
+    
     class CellSplitter(object):
 
         def __init__(self, fun, subcells):
@@ -298,20 +359,33 @@ class TableParse(PDFParse):
                 data_table['data'][ridx] = row
 
     def _sort_cols(self, data_table):
+        '''In some tables, X and Y coordinates, Y and Z coordinates,
+        etc., may be inappropriately stuck together, e.g. X = '20, 8', 
+        Y = '', Z = '-2'. This method tries to reassign coordinate
+        values to the appropriate headers, e.g. X = '20', Y = '8', 
+        Z = '-2'.
+        
+        '''
 
-        # xy, z -> x, z, y
-        xidx = data_table['headers'].index('x')
-        yidx = data_table['headers'].index('y')
-        zidx = data_table['headers'].index('z')
+        # Get coordinate groups
+        coord_groups = get_coord_groups(data_table['headers'])
+
+        # Loop over rows
         for ridx, row in enumerate(data_table['data']):
-            xval = str(row[xidx])
-            yval = str(row[yidx])
-            zval = str(row[zidx])
-            vals = ' '.join([xval, yval, zval])
-            val_split = re.split('[\s,]+', vals)
-            if len(val_split) == 3:
-                row[xidx], row[yidx], row[zidx] = val_split
-                data_table['data'][ridx] = row
+            for coord_group in coord_groups:
+                # Get coordinate values
+                vals = [row[coord] for coord in coord_group]
+                # Join values by space
+                val_str = ' '.join(vals)
+                # Split value string by space / comma
+                val_split = re.split('[\s,]+', val_str)
+                # If we get three values back, reassign
+                # to X, Y, Z headers
+                if len(val_split) == 3:
+                    for cidx, coord in enumerate(coord_group):
+                        row[coord] = val_split[cidx]
+                    # Replace original row
+                    data_table['data'][ridx] = row
 
     _rep_chars = '[\*,]'
 
@@ -334,6 +408,16 @@ class TableParse(PDFParse):
         '^ba$', '^lobe$', '^region$',
         'coordinates',
     ]
+    
+    def _is_mri_header(self, headers):
+        
+        # Loop over table columns
+        for column in headers:
+            # Loop over regex patterns
+            for pattern in self._mri_header_patterns:
+                if re.search(pattern, column, re.I):
+                    return True
+        return False
 
     def _is_mri_table(self, data_table):
         '''Check whether a given table is an fMRI activation table.
@@ -344,12 +428,6 @@ class TableParse(PDFParse):
             True | False
 
         '''
-
-        # Loop over table columns
-        for column in data_table['headers']:
-            # Loop over regex patterns
-            for pattern in self._mri_header_patterns:
-                if re.search(pattern, column, re.I):
-                    return True
-        return False
+        
+        return self._is_mri_header(data_table['headers'])
 

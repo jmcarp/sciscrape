@@ -1,17 +1,20 @@
-# Imports
-import os
+'''
+Utilities for running article searches and downloading the
+resulting documents.
+'''
 
 # Project imports
-import pubtools
-import sciscrape
+from sciscrape.utils import utils
+from sciscrape.utils import pubtools
+from sciscrape.scrapetools import scrape
 
-def searchscrape(query, out_dir, scrape_klass=sciscrape.SciScrape, **kwargs):
+def searchscrape(query, out_dir, scrape_klass=scrape.Scrape, **kwargs):
     '''Run PubMed query, then download articles.
 
     Args:
         query (str) : PubMed search query
         out_dir (str) : Output directory for documents
-        scrape_klass (SciScrape) : Scraper type
+        scrape_klass (Scrape) : Scraper type
         kwargs: Optional arguments for PubMed search
     Returns:
         None
@@ -22,8 +25,7 @@ def searchscrape(query, out_dir, scrape_klass=sciscrape.SciScrape, **kwargs):
     '''
     
     # Create directory if needed
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+    utils.mkdir_p(out_dir)
 
     # Find articles on PubMed
     searcher = pubtools.PubMedSearcher()

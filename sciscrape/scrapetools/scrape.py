@@ -1,13 +1,22 @@
+'''
+Utilities for converting between article IDs (DOI and PubMed ID)
+and full-text documents. Scrape objects can use the scrape() method
+to take an article ID, browse to the publisher's page, determine
+which publisher is hosting the article, and download the full-text
+files using the appropriate Getter classes from getters.py.
+'''
+
 # Imports
 import re
 import urllib2
 import collections
 
 # Project imports
-import pubdet
-import getters
-import pubtools
-import mechtools
+from sciscrape.scrapetools import pubdet
+from sciscrape.scrapetools import getters
+from sciscrape.utils import utils
+from sciscrape.utils import pubtools
+from sciscrape.utils import mechtools
 
 # Default getters
 # Covers PLOS, Frontiers, NAS, Oxford, Highwire, Wiley, Springer
@@ -24,6 +33,10 @@ getter_map['elsevier'] = {
 getter_map['npg'] = {
     'html' : getters.NPGHTMLGetter,
     'pdf' : getters.NPGPDFGetter,
+}
+getter_map['mit'] = {
+    'html' : getters.MITHTMLGetter,
+    'pdf' : getters.MITPDFGetter,
 }
 getter_map['tandf'] = {
     'html' : getters.TaylorFrancisHTMLGetter,
@@ -56,7 +69,32 @@ class ScrapeInfo(object):
         self.docs = {}
         self.status = {}
 
-class SciScrape(object):
+    def save(self, save_dir='.', id_type='doi'):
+        
+        # Try to get document ID
+        if hasattr(self, id_type):
+            id = getattr(self, id_type)
+        elif hasattr(self, 'doi'):
+            id = getattr(self, 'doi')
+        elif hasattr(self, 'pmid'):
+            id = getattr(self, 'pmid')
+        else:
+            # TODO: Write default name
+            return
+        
+        # Replace /s in ID
+        id = id.replace('/', '__')
+        
+        # Make directory if necessary
+        utils.mkdir_p(save_dir)
+
+        # Write documents
+        for doc_type in self.docs:
+            save_name = '%s/%s.%s' % (save_dir, id, doc_type)
+            with open(save_name, 'w') as f:
+                f.write(self.docs[doc_type])
+
+class Scrape(object):
     
     # URLs
     _doi_url = 'http://dx.doi.org'
@@ -141,7 +179,7 @@ class SciScrape(object):
             self.browser.open(pub_link)
             self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
 
-class UMSciScrape(SciScrape):
+class UMScrape(Scrape):
     
     _browser_klass = mechtools.UMBrowser
 
