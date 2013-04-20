@@ -18,6 +18,9 @@ from sciscrape.utils import utils
 from sciscrape.utils import pubtools
 from sciscrape.utils import mechtools
 
+# Set email
+pubtools.email = 'foo@bar.com'
+
 # Default getters
 # Covers PLOS, Frontiers, NAS, Oxford, Highwire, Wiley, Springer
 getter_map = collections.defaultdict(lambda: {
@@ -103,9 +106,9 @@ class Scrape(object):
     # Browser class
     _browser_klass = mechtools.PubBrowser
 
-    def __init__(self):
+    def __init__(self, agent='sciscrape'):
         
-        self.browser = self._browser_klass()#mechtools.UMBrowser()
+        self.browser = self._browser_klass(agent=agent)
         self.info = ScrapeInfo()
     
     def scrape(self, doi=None, pmid=None):
