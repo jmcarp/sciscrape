@@ -12,7 +12,17 @@ from BeautifulSoup import BeautifulSoup as BS
 
 # Set up Entrez
 from Bio import Entrez
-Entrez.email = 'jm.carp@gmail.com'
+
+def ensure_email():
+    try:
+        Entrez.email = email
+    except:
+        raise Exception('''
+Email address not defined.
+When using the pubtools module, always provide your email address:
+>>> from sciscrape.utils import pubtools
+>>> pubtools.email = 'foo@bar.baz'
+''')
 
 pubmed_base_url = 'http://www.ncbi.nlm.nih.gov/pubmed'
 
@@ -31,11 +41,13 @@ def efetch_pmid(pmid):
           PubMed XML
   
     '''
-    
+
+    ensure_email()
+
     return Entrez.efetch(
         db='pubmed',
         retmode='xml',
-        id=pmid
+        id=pmid,
     ).read()
 
 class NotOneResultException(Exception):
@@ -49,11 +61,10 @@ class PubMedSearcher(object):
         'retmax' : 999999,
     }
 
-    #def search(self, term, extra_params={}):
     def search(self, term, **kwargs):
         params = copy.deepcopy(self.DEFAULT_PARAMS)
-        #params.update(extra_params)
         params.update(kwargs)
+        ensure_email()
         search = Entrez.read(
             Entrez.esearch(term=term, **params)
         )

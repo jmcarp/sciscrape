@@ -8,6 +8,9 @@ from sciscrape.utils import utils
 from sciscrape.utils import pubtools
 from sciscrape.scrapetools import scrape
 
+# Set email
+pubtools.email = 'foo@bar.com'
+
 def searchscrape(query, out_dir, scrape_klass=scrape.Scrape, **kwargs):
     '''Run PubMed query, then download articles.
 
