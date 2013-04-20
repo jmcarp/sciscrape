@@ -1,2 +1,3 @@
-implement access checking on getters
-implement retry on getters
+add getter registry to getters.py
+port ACE tableparser to python [?]
+logging / verbosity
