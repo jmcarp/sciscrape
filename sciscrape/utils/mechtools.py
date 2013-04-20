@@ -22,14 +22,14 @@ class PubBrowser(object):
         def add(self, *a, **k): pass
         def clear(self): pass
 
-    def __init__(self):
+    def __init__(self, agent='sciscrape'):
         
         # Initialize Browser
         self._b = mechanize.Browser(history=self.NoHistory())
         
         # Set headers
         self._b.addheaders = [
-            ('User-Agent', 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT)'),
+            ('User-Agent', agent),
         ]
 
         # Ignore robots.txt
@@ -69,10 +69,10 @@ class PubBrowser(object):
     
 class UMBrowser(PubBrowser):
     
-    def __init__(self, user_file=None):
+    def __init__(self, agent='sciscrape', user_file=None):
         
         # Call parent __init__
-        super(UMBrowser, self).__init__()
+        super(UMBrowser, self).__init__(agent)
 
         # Login to UM services
         self.login(user_file)
