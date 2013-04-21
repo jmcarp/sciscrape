@@ -105,7 +105,7 @@ class DocGetter(object):
         
         return True
     
-    #@retry.retry(Exception)
+    @retry.retry(Exception)
     def reget(self, cache, browser):
         return self.get(cache, browser)
 
@@ -139,6 +139,18 @@ class PDFGetter(DocGetter):
     def validate(self, text):
         
         return utils.ispdf(text)
+
+class PMCGetter(HTMLGetter):
+
+    _base_url = 'http://www.ncbi.nlm.nih.gov/pmc/articles/pmid'
+
+    def get_link(self, cache, browser):
+        
+        return '%s/%s' % (self._base_url, cache.pmid)
+
+    def validate(self, text):
+        
+        return not bool(re.search('ipmc11|ipmc12', text, re.I))
 
 class MetaHTMLGetter(MetaGetter, HTMLGetter):
     
@@ -330,11 +342,6 @@ class MITHTMLGetter(HTMLGetter):
     
     def get_link(self, cache, browser):
         
-        #def flt():
-        #    print this
-        #    print this.attrib
-        #    return re.search('/full/', PyQuery(this).attr('href'), re.I)
-        #a = cache.init_qhtml('a.header4[href]').filter(flt)
         a = cache.init_qhtml('a.header4[href]').filter(
             lambda: re.search('/full/', PyQuery(this).attr('href'), re.I)
         )
