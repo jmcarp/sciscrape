@@ -65,8 +65,15 @@ class ScrapeInfo(object):
         # Initialize documents
         self.docs = {}
         self.status = {}
+    
+    @property
+    def pretty_status(self):
+        return '; '.join(['%s: %s' % (k, self.status[k]) for k in self.status])
 
-    def save(self, save_dir='.', id_type='doi'):
+    def save(self, save_dir='.', save_dirs={}, id_type='doi'):
+        '''
+
+        '''
         
         # Try to get document ID
         if hasattr(self, id_type):
@@ -87,7 +94,10 @@ class ScrapeInfo(object):
 
         # Write documents
         for doc_type in self.docs:
-            save_name = '%s/%s.%s' % (save_dir, id, doc_type)
+            if doc_type in save_dirs:
+                save_name = '%s/%s.%s' % (save_dirs[doc_type], id, doc_type)
+            else:
+                save_name = '%s/%s.%s' % (save_dir, id, doc_type)
             with open(save_name, 'w') as f:
                 f.write(self.docs[doc_type])
 
@@ -149,7 +159,7 @@ class Scrape(object):
                 self.info.docs[doc_type] = self.info.html
                 self.info.status[doc_type] = 'Success'
             except Exception as e:
-                self.info.status[doc_type] = 'Fail', e.message
+                self.info.status[doc_type] = '%s, %s' % ('Fail', e.message)
         
         # Return ScrapeInfo object
         return self.info
