@@ -43,7 +43,11 @@ class ElsevierAccessRule(AccessRule):
 class DocGetter(object):
     '''Base class for document getters.'''
     
-    def get_link(self, cache):
+    def get_link(self, cache, browser):
+        
+        pass
+
+    def post_process(self, cache, browser):
         
         pass
 
@@ -87,6 +91,8 @@ class DocGetter(object):
         
         # Get document link
         link = self.get_link(cache, browser)
+        if link:
+            print 'Browsing to %s...' % (link)
 
         # Open document link
         if link:
@@ -95,6 +101,9 @@ class DocGetter(object):
         else:
             cache.html, cache.qhtml = cache.init_html, cache.init_qhtml
         
+        # Run optional post-processing steps
+        self.post_process(cache, browser)
+
         # Check access
         if not self.check_access(cache.html, cache.qhtml):
             raise NoAccessException('No access')
@@ -136,6 +145,18 @@ class HTMLGetter(DocGetter):
 
 class PDFGetter(DocGetter):
     
+    def post_process(self, cache, browser):
+        
+        # Quit if valid PDF
+        if self.validate(cache.html):
+            return
+
+        # Check for PDF in <iframe> tag
+        iframe_link = cache.qhtml('iframe').attr('src')
+        if iframe_link:
+            browser.open(iframe_link)
+            cache.html, cache.qhtml = browser.get_docs()
+
     def validate(self, text):
         
         return utils.ispdf(text)
