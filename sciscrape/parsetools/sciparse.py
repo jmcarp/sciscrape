@@ -22,16 +22,36 @@ def isfloat(s):
     except ValueError:
         return False
 
-def get_coord_groups(headers):
-    '''Get contiguous, ordered groups of x, y, z columns from headers.'''
+def get_coord_groups(headers, max_space=2):
+    '''Get evenly spaced, ordered groups of x, y, z columns from headers.
+    
+    Args:
+        headers : list of header column strings
+        max_space : maximum gap between x, y, and z headers
+                    if max_space == 2, can detect ['x', 'sd', 'y', 'sd', 'z', 'sd'],
+                    etc.
+    Returns:
+        List of lists of coordinate positions
+
+    Examples:
+    >>> get_coord_groups(['x', 'y', 'z'])
+    [[0, 1, 2]]
+    >>> get_coord_groups(['_', 'x', 'y', 'z', 'x', '_', 'y', '_', 'z', '_'])
+    [[1, 2, 3], [4, 6, 8]]
+
+    '''
     
     # Initialize coordinate groups
     coord_groups = []
     
     # Loop over headers
     for idx in range(len(headers) - 2):
-        if headers[idx:idx+3] == ['x', 'y', 'z']:
-            coord_groups.append(range(idx, idx + 3))
+        # Loop over spacing gaps
+        for space in range(1, max_space + 1):
+            # Check for ['x', 'y', 'z']
+            if headers[idx:idx+(space*3):space] == ['x', 'y', 'z']:
+                coord_groups.append(range(idx, idx + (space * 3), space))
+                break
 
     # Return coordinate groups
     return coord_groups
