@@ -123,9 +123,9 @@ class UMBrowser(PubBrowser):
 
         # Fill form fields
         if user_file and os.path.exists(user_file):
-            userinfo = open(userfile, 'r').readlines()
-            self._b['login'] = userinfo[0].strip()
-            self._b['password'] = userinfo[1].strip()
+            user_info = open(user_file, 'r').readlines()
+            self._b['login'] = user_info[0].strip()
+            self._b['password'] = user_info[1].strip()
         else:
             self._b['login'] = getpass.getpass('Username: ')
             self._b['password'] = getpass.getpass()
