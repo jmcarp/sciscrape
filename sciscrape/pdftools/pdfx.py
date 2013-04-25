@@ -39,5 +39,12 @@ class PDFExtractor(object):
         xml_raw = req.text
         xml_clean = re.sub('encoding=\'.*?\'', '', xml_raw)
 
+        # Parse XML
+        qxml = PyQuery(xml_clean)
+        
+        # Quit if <error>
+        if qxml[0].tag == 'error':
+            return
+
         # Return parsed XML
-        return PyQuery(xml_clean)
+        return qxml
