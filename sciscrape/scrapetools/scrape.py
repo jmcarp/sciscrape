@@ -90,7 +90,8 @@ class ScrapeInfo(object):
         id = id.replace('/', '__')
         
         # Make directory if necessary
-        utils.mkdir_p(save_dir)
+        if save_dir != '.':
+            utils.mkdir_p(save_dir)
 
         # Write documents
         for doc_type in self.docs:
@@ -110,12 +111,12 @@ class Scrape(object):
     # Browser class
     _browser_klass = mechtools.PubBrowser
 
-    def __init__(self, agent='sciscrape'):
+    def __init__(self, agent='sciscrape', **kwargs):
         
-        self.browser = self._browser_klass(agent=agent)
+        self.browser = self._browser_klass(agent=agent, **kwargs)
         self.info = ScrapeInfo()
     
-    def scrape(self, doi=None, pmid=None, fetch_pmid=True):
+    def scrape(self, doi=None, pmid=None, fetch_pmid=True, fetch_types=None):
         '''Download documents for a target article.
 
         Args:
@@ -151,15 +152,27 @@ class Scrape(object):
 
         # Get documents
         for doc_type in getter_map:
+
+            # Skip documents not to be included
+            if fetch_types and doc_type not in fetch_types:
+                continue
+            
+            # Browser to publisher link
             if self.browser.geturl() != pub_link:
                 self.browser.open(pub_link)
+
+            # Identify getter
             getter = getter_map[doc_type][self.info.publisher]()
+            
+            # Get document
             try:
+                # Success
                 get_success = getter.reget(self.info, self.browser)
                 self.info.docs[doc_type] = self.info.html
                 self.info.status[doc_type] = 'Success'
             except Exception as e:
-                self.info.status[doc_type] = '%s, %s' % ('Fail', e.message)
+                # Failure
+                self.info.status[doc_type] = '%s, %s' % ('Fail', str(e))
         
         # Return ScrapeInfo object
         return self.info
@@ -210,4 +223,4 @@ class Scrape(object):
 class UMScrape(Scrape):
     
     _browser_klass = mechtools.UMBrowser
-
+    
