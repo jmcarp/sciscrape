@@ -91,6 +91,18 @@ TitlePubDetector('elsevier', 'sciencedirect')
 TitlePubDetector('springer', 'springer')
 TitlePubDetector('wolterskluwer', 'wolters kluwer')
 
+# Define detectors based on <meta> tags using regex
+RegexMetaPubDetector('mit', [
+        ['name', 'dc.publisher'],
+        ['content', 'mit press'],
+    ],
+)
+RegexMetaPubDetector('npg', [
+        ['name', 'dc.publisher'],
+        ['content', 'nature publishing group'],
+    ],
+)
+
 # Define detectors based on <meta> tags
 MetaPubDetector('highwire', [
         ['name', 'HW.identifier'],
@@ -114,22 +126,6 @@ MetaPubDetector('thieme', [
 MetaPubDetector('royal', [
         ['name', 'DC.Publisher'],
         ['content', 'The Royal Society'],
-    ]
-)
-#MetaPubDetector('mit', [
-#        ['name', 'dc.Publisher'],
-#        ['content', 'MIT Press'],
-#    ],
-#    ['=', '^='],
-#)
-RegexMetaPubDetector('mit', [
-        ['name', 'dc.publisher'],
-        ['content', 'mit press'],
-    ],
-)
-MetaPubDetector('npg', [
-        ['name', 'DC.publisher'],
-        ['content', 'Nature Publishing Group'],
     ]
 )
 MetaPubDetector('ama', [
