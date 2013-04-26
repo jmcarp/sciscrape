@@ -41,14 +41,19 @@ def populate(journal, scrape_klass=scrape.Scrape):
     if not todo_files:
         return
 
-    # Get scraper
+    # Initialize scraper
     scraper = scrape_klass()
 
+    # Download files
     for todo_file in todo_files:
 
+        # Get DOI
         doi = os.path.split(todo_file)[1]\
             .split('.csv')[0]\
             .replace('__', '/')
         
-        info = scraper.scrape(doi=doi)
+        # Fetch PDF
+        info = scraper.scrape(doi=doi, fetch_types=['pdf'])
+
+        # Save PDF
         info.save('%s/doc/%s' % (tests.data_dir, journal))
