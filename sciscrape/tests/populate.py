@@ -12,6 +12,7 @@ import glob
 # Project imports
 from sciscrape.scrapetools import scrape
 from sciscrape.scrapetools import searchscrape
+from sciscrape.utils import doiclean
 from sciscrape import tests
 
 def populate(journal, scrape_klass=scrape.Scrape):
@@ -49,8 +50,8 @@ def populate(journal, scrape_klass=scrape.Scrape):
 
         # Get DOI
         doi = os.path.split(todo_file)[1]\
-            .split('.csv')[0]\
-            .replace('__', '/')
+            .split('.csv')[0]
+        doi = doiclean.doi_unclean(doi)
         
         # Fetch PDF
         info = scraper.scrape(doi=doi, fetch_types=['pdf'])
