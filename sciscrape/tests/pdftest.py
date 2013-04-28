@@ -1,3 +1,8 @@
+'''
+Functions for comparing tables extracted from PDFs and hand-coded
+tables. The main function most users will call is test().
+'''
+
 # Imports
 import os
 import glob
@@ -11,6 +16,14 @@ from sciscrape.tests import populate
 from sciscrape import tests
 
 def read_tables_csv(csv_name):
+    '''Read Table objects from a CSV file.
+
+    Args:
+        csv_name (str): Path to CSV file
+    Returns:
+        List of Table instances
+
+    '''
     
     csv_tables = []
     table = sciparse.Table(None)
@@ -30,6 +43,17 @@ def read_tables_csv(csv_name):
     return csv_tables
 
 def compare_table_groups(tref, tcmp):
+    '''Compare two Table instances, computing true positives, false
+    positives, and false negatives.
+
+    Args:
+        tref (Table): Reference table
+        tcmp (Table): Comparison table
+    Returns:
+        Dictionary containing proportions of true positives, false
+            positives, and false negatives
+    
+    '''
     
     tref_coords = reduce(operator.add, [t.coords for t in tref], [])
     tcmp_coords = reduce(operator.add, [t.coords for t in tcmp], [])
@@ -50,6 +74,16 @@ def compare_table_groups(tref, tcmp):
     }
 
 def test(journal, scrape_klass=scrape.Scrape):
+    '''Compare tables extracted from PDFs with hand-coded tables
+    for all available article for a journal.
+
+    Args:
+        journal (str): Journal name
+        scrape_klass (Scrape): Type of scraper to use
+    Returns:
+        pandas.DataFrame containing performance for each article
+    
+    '''
     
     # Initialize results
     cmps = []
@@ -61,6 +95,8 @@ def test(journal, scrape_klass=scrape.Scrape):
     csv_files = glob.glob('%s/csv/%s/*.csv' % (tests.data_dir, journal))
     
     for csv_file in csv_files:
+
+        print 'Working on file %s...' % (csv_file)
 
         base_file = os.path.split(csv_file)[1]\
             .split('.csv')[0]
@@ -80,5 +116,6 @@ def test(journal, scrape_klass=scrape.Scrape):
         cmp['id'] = base_file
         cmp['jn'] = journal
         cmps.append(cmp)
-
+    
+    # Return results as DataFrame
     return pd.DataFrame(cmps)
