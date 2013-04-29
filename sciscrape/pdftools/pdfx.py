@@ -5,12 +5,17 @@ import re
 import requests
 from pyquery import PyQuery
 
+# Sciscrape imports
+from sciscrape.utils import retry
+
 class PDFExtractor(object):
     '''Base class for extracting information from
     PDFs using PDFx.
 
     '''
     
+    #TODO: Figure out which exception(s) this may throw
+    @retry.retry(Exception)
     def extract(self, pdf):
         '''Get XML representation of PDF. For details, see 
         http://pdfx.cs.man.ac.uk/usage
