@@ -1,5 +1,5 @@
 '''
-
+Classes for extracting coordinate tables from PDF documents.
 '''
 
 
@@ -173,16 +173,27 @@ class PDFTableParse(PDFParse):
         # Data tables -> Coord tables
         coord_tables = []
         for data_table in data_tables:
+
             # Skip non-MRI tables
             if not self._is_mri_table(data_table):
                 continue
+
             # Apply post-processing functions
             self._clean_headers(data_table)
             self._split_cols(data_table)
             self._sort_cols(data_table)
             self._to_float(data_table)
             
+            # Convert data table to coord table
             coord_table = Table(data_table)
+
+            # Clear tables with all positive coordinates
+            # May indicate that negative signs were lost in
+            # PDF conversion
+            if self._all_coords_pos(coord_table):
+                coord_table.coords = []
+
+            # Append coordinate table to list
             coord_tables.append(coord_table)
 
         # Return coordinate tables
@@ -451,4 +462,18 @@ class PDFTableParse(PDFParse):
         '''
         
         return self._is_mri_header(data_table['headers'])
+
+    def _all_coords_pos(self, coord_table):
+        '''Check whether all coordinate triples in a Coord table
+        are positive. This may indicate that negative signs were
+        lost in PDF conversion.
+
+        Args:
+            coord_table (Table): Table to check
+        Returns:
+            True / False
+        
+        '''
+
+        return all([c.x >= 0 and c.y >= 0 and c.z >= 0 for c in coord_table.coords])
 
