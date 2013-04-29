@@ -17,6 +17,7 @@ from sciscrape.scrapetools import getters
 from sciscrape.utils import utils
 from sciscrape.utils import pubtools
 from sciscrape.utils import mechtools
+from sciscrape.utils import doiclean
 from sciscrape.utils import pmid_doi
 
 # Set email
@@ -87,7 +88,7 @@ class ScrapeInfo(object):
             return
         
         # Replace /s in ID
-        id = id.replace('/', '__')
+        id = doiclean.doi_clean(id)
         
         # Make directory if necessary
         if save_dir != '.':
@@ -184,7 +185,7 @@ class Scrape(object):
         try:
             self.browser.open('%s/%s' % (self._doi_url, doi))
         except urllib2.HTTPError:
-            raise BadDOIException
+            raise BadDOIException(doi)
         
         # Read documents and save in ScrapeInfo
         self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
@@ -193,7 +194,7 @@ class Scrape(object):
         if re.search('doi not found',
                      self.info.init_qhtml('title').text(),
                      re.I):
-            raise BadDOIException
+            raise BadDOIException(doi)
         
         # Return URL
         return self.browser.geturl()
