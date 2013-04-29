@@ -182,7 +182,6 @@ class PDFTableParse(PDFParse):
             self._sort_cols(data_table)
             self._to_float(data_table)
             
-            #print data_table
             coord_table = Table(data_table)
             coord_tables.append(coord_table)
 
@@ -237,7 +236,7 @@ class PDFTableParse(PDFParse):
 
         # Get table numbers
         numbers = [PyQuery(t).attr('number') for t in qtables]
-        numbers = map(int, numbers)
+        #numbers = map(int, numbers)
 
         # Initialize consolidated tables
         ctables = []
@@ -269,7 +268,7 @@ class PDFTableParse(PDFParse):
         # Get headers from <thead> / <tr> tags
         
         # Get <thead> / <tr> tags
-        trs = qtable.find('thead,tr')
+        trs = qtable('thead,tr')
 
         # Check up to _max_header_tries or the number of
         # <thead> / <tr> tags, whichever is least
@@ -278,12 +277,11 @@ class PDFTableParse(PDFParse):
         # Loop over rows in reverse order
         # Deals with empty / incomplete headers at the
         # top of the table
-        for tryidx in range(ntry, 0, -1):
+        for tryidx in range(0, ntry)[::-1]:
             
             # Extract text from <th> / <td> children
             headers = PyQuery(trs[tryidx])('th,td')\
                 .map(self._get_text)[:]
-            #headers = [h.lower() for h in headers]
             
             # Done if current value is a valid header
             if self._is_mri_header(headers):
@@ -293,7 +291,6 @@ class PDFTableParse(PDFParse):
         h1_table = qtable.prev('h1.table').text()
         if h1_table:
             headers = re.split('\s+', h1_table)
-            #headers = [h.lower() for h in headers]
             # Done if current value is a valid header
             if self._is_mri_header(headers):
                 return headers
@@ -317,6 +314,10 @@ class PDFTableParse(PDFParse):
 
             # Remove leading / trailing whitespace
             header = header.strip()
+            
+            # Capture isolated x / y / z
+            # E.g., 'TC x' -> 'x', 'x Coordinate' -> 'x'
+            header = re.sub(r'[^xyz]*(\s*[xyz]\s*)[^xyz]*', r'\1', header, re.I)
 
             # Done
             data_table['headers'][hidx] = header
