@@ -1,27 +1,25 @@
-'''
+"""
 Utilities to download documents from various publishers.
-'''
+"""
 
-# Imports
 import re
 import json
+import urllib
 import urlparse
 from pyquery import PyQuery
 
-# Project imports
 from sciscrape.utils import retry
 from sciscrape.utils import utils
 
-# Define exceptions
-class NotFoundException(Exception): pass
-class NoAccessException(Exception): pass
-class BadDocumentException(Exception): pass
+from sciscrape.exceptions import (
+    NotFoundError, NoAccessError, BadDocumentError
+)
 
 class AccessRule(object):
     '''Base class for access checkers.'''
     
     def __call__(self, text, qtext):
-        raise NotImplementedError('Subclasses must implement check()')
+        raise NotImplemented('Subclasses must implement __call__')
 
 class RegexAccessRule(AccessRule):
     '''Access checker using regex on article text.'''
@@ -38,7 +36,14 @@ class ElsevierAccessRule(AccessRule):
     
     def __call__(self, text, qtext):
         return not bool(qtext('.svArticle.section'))
-        #return not bool(qtext('.svArticle'))
+
+class ThiemeAccessRule(AccessRule):
+
+    def __call__(self, text, qtext):
+        full_text_tab = qtext('li.tab').filter(
+            lambda: PyQuery(this).text() == 'Full Text'
+        )
+        return not bool(full_text_tab)
 
 class DocGetter(object):
     '''Base class for document getters.'''
@@ -56,30 +61,36 @@ class DocGetter(object):
         return True
     
     # Access white-list functions
-    _access_wlist = [
+    _access_whitelist = [
         RegexAccessRule('identitieswelcome'),
     ]
     
     # Access black-list functions
-    _access_blist = [
-        RegexAccessRule('why don\'t i have access'),
-        RegexAccessRule('add this item to your shopping cart'),
-        RegexAccessRule('access to this content is restricted'),
-        RegexAccessRule('full content is available to subscribers'),
-        RegexAccessRule('options for acessing this content'),
-        RegexAccessRule('the requested article is not currently available'),
+    _access_blacklist = [
+        RegexAccessRule(r'why don\'t i have access'),
+        RegexAccessRule(r'add this item to your shopping cart'),
+        RegexAccessRule(r'access to this content is restricted'),
+        RegexAccessRule(r'full content is available to subscribers'),
+        RegexAccessRule(r'options for acessing this content'),
+        RegexAccessRule(r'the requested article is not currently available'),
+        RegexAccessRule(r'purchase short-term access'), # Highwire
+        RegexAccessRule(r'purchase on springer.com'), # Springer
+        RegexAccessRule(r'the fully formatted pdf and html versions '
+                        r'are in production'), # SpringerOpen
+        RegexAccessRule(r'You could be reading the full-text of this '
+                        r'article now'), # LWW
     ]
 
     def check_access(self, text, qtext):
         '''Check whether we have access to an article.'''
         
         # Check white-list functions
-        for wfun in self._access_wlist:
+        for wfun in self._access_whitelist:
             if wfun(text, qtext):
                 return True
 
         # Check black-list functions
-        for bfun in self._access_blist:
+        for bfun in self._access_blacklist:
             if bfun(text, qtext):
                 return False
 
@@ -106,11 +117,11 @@ class DocGetter(object):
 
         # Check access
         if not self.check_access(cache.html, cache.qhtml):
-            raise NoAccessException('No access')
+            raise NoAccessError('No access')
 
         # Validate result
         if not self.validate(cache.html):
-            raise BadDocumentException('Bad document')
+            raise BadDocumentError('Bad document')
         
         return True
     
@@ -125,12 +136,12 @@ class MetaGetter(DocGetter):
     _filter = None
 
     def get_link(self, cache, browser):
-        
+
         tags = cache.init_qhtml(utils.build_query(
             'meta',
             self._attrs
         ))
-        
+
         if self._filter:
             tags = tags.filter(self._filter)
         
@@ -191,9 +202,9 @@ class MetaPDFGetter(MetaGetter, PDFGetter):
 
 class ElsevierHTMLGetter(HTMLGetter):
     
-    _access_blist = [
+    _access_blacklist = [
         ElsevierAccessRule(),
-    ] + DocGetter._access_blist
+    ] + DocGetter._access_blacklist
 
     def get_link(self, cache, browser):
         
@@ -294,13 +305,9 @@ class APAPDFGetter(APAGetter, PDFGetter):
 ##################
 
 class WoltersKluwerGetter(DocGetter):
-    
-    _access_blist = [
-        RegexAccessRule('the limit for concurrent users'),
-    ] + DocGetter._access_blist
 
-    _base_url = 'http://ovidsp.ovid.com/ovidweb.cgi?' + \
-        'T=JS&MODE=ovid&NEWS=n&PAGE=fulltext&D=ovft&SEARCH='
+    _base_url = 'http://content.wkhealth.com/linkback/openurl'
+    _params = ['issn', 'volume', 'issue', 'spage']
 
     def get_link(self, cache, browser):
         
@@ -308,52 +315,63 @@ class WoltersKluwerGetter(DocGetter):
         url = browser.geturl()
         parsed_url = urlparse.urlparse(url)
         url_params = dict(urlparse.parse_qsl(parsed_url.query))
-        
-        # Build search string
-        if 'an' in url_params:
-            ovid_search = '%s.an.' % \
-                (url_params['an'])
-        elif all([p in url_params for p in 
-                 ['issn', 'volume', 'issue', 'spage']]):
-            ovid_search = '%s.is+and+%s.vo+and+%s.ip+and+%s.pg.' % \
-                (url_params['issn'], url_params['volume'],
-                url_params['issue'], url_params['spage'])
-        else:
-            raise NoAccessException('No access')
-        
-        # Return full-text URL
-        return self._base_url + ovid_search
-    
-    @retry.retry(Exception, delay=180)
-    def reget(self, cache, browser):
-        return self.get(cache, browser)
 
-class WoltersKluwerHTMLGetter(WoltersKluwerGetter, HTMLGetter):
+        if 'an' in url_params:
+            lww_params = {
+                'an': url_params['an']
+            }
+        elif all([param in url_params for param in self._params]):
+            lww_params = {
+                key: url_params[key]
+                for key in self._params
+            }
+        else:
+            raise NoAccessError('No access')
+
+        return '{}?{}'.format(
+            self._base_url,
+            urllib.urlencode(lww_params)
+        )
+
+class WoltersKluwerHTMLGetter(WoltersKluwerGetter, MetaHTMLGetter):
     
-    pass    
+    _attrs = [
+        ['name', 'wkhealth_fulltext_html_url'],
+    ]
+
+    def get_link(self, cache, browser):
+
+        # Get welcome link
+        welcome_link = WoltersKluwerGetter.get_link(self, cache, browser)
+
+        # Browse to welcome link
+        browser.open(welcome_link)
+
+        # Hack: Overwrite initial documents with LWW page
+        cache.init_html, cache.init_qhtml = browser.get_docs()
+
+        # Get full-text link
+        return MetaHTMLGetter.get_link(self, cache, browser)
 
 class WoltersKluwerPDFGetter(WoltersKluwerGetter, PDFGetter):
-    
+
     def get_link(self, cache, browser):
-        
-        # Get full-text link
-        link = super(WoltersKluwerPDFGetter, self)\
-            .get_link(cache, browser)
-        
-        # Open full-text page
-        browser.open(link)
-        html, qhtml = browser.get_docs()
-        
-        # Get PDF wrapper link
-        pdf_link = qhtml('a#pdf').attr('href')
-        full_pdf_link = urlparse.urljoin(link, pdf_link)
-        
-        # Open PDF wrapper page
-        browser.open(full_pdf_link)
-        html, qhtml = browser.get_docs()
-        
+
+        # Get welcome link
+        welcome_link = WoltersKluwerGetter.get_link(self, cache, browser)
+
+        # Browse to welcome link
+        browser.open(welcome_link)
+        _, qhtml = browser.get_docs()
+
         # Get PDF link
-        return qhtml('iframe').attr('src')
+        link = qhtml('.ej-box-01-body-li-article-tools-pdf a')\
+            .attr('href')
+        if link:
+            return link
+
+        # Link not found
+        raise NoAccessError('No access')
 
 #############
 # MIT Press #
@@ -372,7 +390,7 @@ class MITHTMLGetter(HTMLGetter):
                 return link
             raise
         except:
-            raise NotFoundException('Link not found')
+            raise NotFoundError('Link not found')
 
 class MITPDFGetter(PDFGetter):
     
@@ -385,16 +403,20 @@ class MITPDFGetter(PDFGetter):
             link = PyQuery(a[-1]).attr('href')
             if link is not None:
                 return link
-            raise NotFoundException('Link not found')
+            raise NotFoundError('Link not found')
         except:
-            raise NotFoundException('Link not found')
+            raise NotFoundError('Link not found')
 
 #############################
 # Thieme Medical Publishers #
 #############################
 
 class ThiemeHTMLGetter(MetaHTMLGetter):
-    
+
+    _access_blacklist = [
+        ThiemeAccessRule(),
+    ] + DocGetter._access_blacklist
+
     _attrs = [
         ['name', 'DC.relation'],
     ]

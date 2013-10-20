@@ -1,202 +1,159 @@
-'''
-Utilities for querying the PubMed API.
-'''
-
-# Imports
-import re
-import copy
-import inspect
 import requests
+import urlparse
+import itertools
 
-from BeautifulSoup import BeautifulSoup as BS
+from pyquery import PyQuery
+from Bio import Entrez, Medline
 
-# Set up Entrez
-from Bio import Entrez
+email = None
+class EntrezEmailError(Exception): pass
 
-def ensure_email():
-    try:
-        Entrez.email = email
-    except:
-        raise Exception('''
-Email address not defined.
-When using the pubtools module, always provide your email address:
->>> from sciscrape.utils import pubtools
->>> pubtools.email = 'foo@bar.baz'
-''')
+PUBMED_URL = 'http://www.ncbi.nlm.nih.gov/pubmed/'
 
-pubmed_base_url = 'http://www.ncbi.nlm.nih.gov/pubmed'
+# See http://www.nlm.nih.gov/bsd/mms/medlineelements.html
+MEDLINE_TO_TEXT = {
+    'AB': 'abstract',
+    'AD': 'affiliation',
+    'AID': 'article_identifier',
+    'AU': 'author',
+    'CI': 'copyright_information',
+    'CIN': 'comment_in',
+    'CN': 'corporate_author',
+    'CON': 'comment_on',
+    'CRDT': 'create_date',
+    'DA': 'date_created',
+    'DEP': 'date_of_electronic_publication',
+    'DCOM': 'date_completed',
+    'DP': 'date_of_publication',
+    'EDAT': 'entrez_date',
+    'EIN': 'erratum_in',
+    'FAU': 'full_author',
+    'FIR': 'full_investigator_name',
+    'GR': 'grant_number',
+    'IR': 'investigator_name',
+    'JT': 'journal_title',
+    'JID': 'nlm_unique_id',
+    'LA': 'language',
+    'LID': 'location_identifier',
+    'LR': 'date_last_revised',
+    'MH': 'mesh_terms',
+    'MHDA': 'mesh_date',
+    'MID': 'manuscript_id',
+    'IP': 'issue',
+    'IS': 'issn',
+    'OAB': 'other_abstract',
+    'OID': 'other_id',
+    'OT': 'other_term',
+    'OTO': 'other_term_owner',
+    'OWN': 'owner',
+    'PG': 'pagination',
+    'PHST': 'publication_history_status',
+    'PL': 'place_of_publication',
+    'PMC': 'pubmed_central_identifier',
+    'PMCR': 'pubmed_central_release',
+    'PMID': 'pubmed_unique_identifier',
+    'PST': 'publication_status',
+    'PT': 'publication_type',
+    'RF': 'number_of_references',
+    'RN': 'registry_number',
+    'SB': 'subset',
+    'SI': 'secondary_source_id',
+    'SO': 'source',
+    'STAT': 'status',
+    'TA': 'journal_title_abbreviation',
+    'TI': 'title',
+    'TT': 'transliterated_title',
+    'VI': 'volume',
+}
 
-def pmid_to_document(pmid):
-    
-    xml = efetch_pmid(pmid)
-    doc = PubMedXML(xml).parse()
-    return doc
+TEXT_TO_MEDLINE = {val: key for key, val in MEDLINE_TO_TEXT.iteritems()}
 
-def efetch_pmid(pmid):
-    '''Query PubMed API by PMID; return XML.
-      
-      Args:
-          pmid (int/str) : PubMed ID
-      Returns:
-          PubMed XML
-  
-    '''
+def ensure_email(func):
+    def wrapped(*args, **kwargs):
+        if Entrez.email is None:
+            if email is not None:
+                Entrez.email = email
+            else:
+                raise EntrezEmailError(
+                    "Email address not defined. "
+                    "When using the pubtools module, always provide your email address: "
+                    ">>> from sciscrape.utils import pubtools "
+                    ">>> pubtools.email = 'foo@bar.baz' "
+                )
+        return func(*args, **kwargs)
+    return wrapped
 
-    ensure_email()
+@ensure_email
+def search_pmids(term, retmax=999999, **kwargs):
 
-    return Entrez.efetch(
-        db='pubmed',
-        retmode='xml',
-        id=pmid,
-    ).read()
-
-class NotOneResultException(Exception):
-    pass
-
-class PubMedSearcher(object):
-    
-    DEFAULT_PARAMS = {
-        'db' : 'pubmed',
-        'rettype' : 'xml',
-        'retmax' : 999999,
-    }
-
-    def search(self, term, **kwargs):
-        params = copy.deepcopy(self.DEFAULT_PARAMS)
-        params.update(kwargs)
-        ensure_email()
-        search = Entrez.read(
-            Entrez.esearch(term=term, **params)
+    return Entrez.read(
+        Entrez.esearch(
+            term=term,
+            db='pubmed',
+            retmax=retmax,
+            **kwargs
         )
-        return search['IdList']
+    )['IdList']
 
-    def search_one(self, term, extra_params={}):
-        extra_params_copy = copy.deepcopy(extra_params)
-        extra_params_copy['retmax'] = 2
-        ids = self.search(term, extra_params_copy)
-        if len(ids) == 1:
-            return ids[0]
-        raise NotOneResultException('Got %d results' % (len(ids)))
+@ensure_email
+def download_pmids(pmids, chunk_size=25):
 
-def pmid_to_publisher(pmid):
+    records = []
+
+    # See http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
+    chunks = itertools.izip_longest(
+        *[iter(pmids)] * chunk_size, fillvalue=None
+    )
+
+    for chunk in chunks:
+        handle = Entrez.efetch(
+            db='pubmed',
+            rettype='medline',
+            id=','.join(pmid for pmid in chunk if pmid),
+        )
+        for record in Medline.parse(handle):
+            records.append({
+                MEDLINE_TO_TEXT[key]: value
+                for key, value in record.iteritems()
+            })
+
+    return records
+
+def record_to_doi(record):
+
+    identifiers = record.get('article_identifier', [])
+    location_identifier = record.get('location_identifier')
+    if location_identifier:
+        identifiers.append(location_identifier)
+    for identifier in identifiers:
+        if ' [doi]' in identifier:
+            return identifier.replace(' [doi]', '')
+
+def _contains_publisher_url():
+    parsed = PyQuery(this)
+    if parsed.attr('title') == "Full text at publisher's site":
+        return True
+    child_image_title = parsed('img').attr('title')
+    if child_image_title and child_image_title.startswith('Read full text in'):
+        return True
+    return False
+
+def pmid_to_publisher_link(pmid):
     '''Get publisher link from PubMed.
 
     Args:
-        pmid (int / str) : PubMed ID
+        pmid (int / str): PubMed ID
     Returns:
-        pub_link : Link to document on publisher site
+        pub_link: Link to document on publisher site
 
     '''
-    
-    # Get PubMed URL
-    pm_url = '%s/%s' % (pubmed_base_url, pmid)
     
     # Get PubMed HTML
-    req = requests.get(pm_url)
-    html = req.text
+    pubmed_url = urlparse.urljoin(PUBMED_URL, pmid)
+    req = requests.get(pubmed_url)
 
-    # Find full text link
-    html_parse = BS(html)
-    pub_link = html_parse.find(
-        'a',
-        title=re.compile('^full text', re.I)
-    )
-
-    # Return link href
-    try:
-        return pub_link['href']
-    except:
-        return ''
-
-class MultiFunParser(object):
-  
-    def parse(self):
-        
-        # Initialize information
-        info = {}
-    
-        # Get _get* methods
-        methods = inspect.getmembers(self, predicate=inspect.ismethod)
-        methods = [m for m in methods if m[0].startswith('_get')]
-    
-        # Apply methods
-        for method in methods:
-            key = re.sub('_get_', '', method[0])
-            key = key.replace('_', '-')
-            value = method[1]()
-            info[key] = value
-    
-        # Done
-        return info
-
-class PubMedXML(MultiFunParser):
-    '''Extract meta-data from PubMed XML
-    
-    '''
-
-    def __init__(self, xml):
-        self.xml = xml
-        self.xml_parse = BS(xml)
-
-    def _get_doi(self):
-        doi = self.xml_parse.find(
-            re.compile('articleid', re.I),
-            idtype=re.compile('doi', re.I)
-        )
-        if doi:
-            return unicode(doi.string)
-
-    def _get_abstract(self):
-        abstract = self.xml_parse.find(re.compile('abstracttext', re.I))
-        if abstract:
-            return unicode(abstract.string)
-
-    def _get_title(self):
-        title = self.xml_parse.find(re.compile('article-?title'))
-        if title:
-            return ''.join(title.findAll(text=True))
-
-    def _get_journal_title(self):
-        journal = self.xml_parse.find('journal')
-        if journal:
-            title = journal.find('title')
-            if title:
-                return unicode(title.string)
-
-    def _get_keywords(self):
-        keywords = self.xml_parse.findAll('kwd')
-        return [unicode(keyword.string) for kewword in keywords]
-    
-    def _get_date(self):
-        pubdate = self.xml_parse.find('pubdate')
-        if pubdate:
-            year = pubdate.find('year')
-            return unicode(year.string)
-
-    def _get_author(self):
-        authors_xml = self.xml_parse.findAll('author')
-        if authors_xml:
-            authors = []
-            for author_xml in authors_xml:
-                author = {}
-                last = author_xml.find('lastname')
-                if last:
-                    author['family'] = unicode(last.string)
-                frst = author_xml.find('forename')
-                if frst:
-                    author['given'] = unicode(frst.string)
-                if author:
-                    authors.append(author)
-            return authors
-
-    def _get_pages(self):
-        pages_xml = self.xml_parse.find('medlinepgn')
-        if pages_xml:
-            pages = {}
-            pages_split = pages_xml.string.split('-')
-            ndigit_first = len(pages_split[0])
-            pages['first'] = pages_split[0]
-            if len(pages_split) > 1:
-                ndigit_last = len(pages_split[1])
-                pages['last'] = pages_split[0][:ndigit_first-ndigit_last] + pages_split[1]
-            return pages
+    # Note: Use ``content`` property of request
+    # rather than ``text`` so that PyQuery won't 
+    # choke on unicode input.
+    html_parse = PyQuery(req.content).xhtml_to_html()
+    return html_parse('a').filter(_contains_publisher_url).attr('href')

@@ -14,7 +14,6 @@ from sciscrape.utils import utils
 def pubdet(html):
     '''Detect publisher from HTML document.'''
 
-    publisher = None
     for detector in PubDetector.registry:
         if PubDetector.registry[detector].detect(html):
             return detector
@@ -39,7 +38,7 @@ class TitlePubDetector(PubDetector):
         
         # Build detector function
         def fun(html):
-            title = PyQuery(html)('title')
+            title = PyQuery(html).xhtml_to_html()('title')
             if title:
                 return bool(re.search(regex, title.text(), flags))
             return False
@@ -54,7 +53,7 @@ class MetaPubDetector(PubDetector):
         
         # Build detector function
         def fun(html):
-            return bool(PyQuery(html)(utils.build_query(
+            return bool(PyQuery(html).xhtml_to_html()(utils.build_query(
                 'meta', attrs, opers
             )))
         
@@ -69,7 +68,7 @@ class RegexMetaPubDetector(PubDetector):
         
         def fun(html):
 
-            q = PyQuery(html)('meta')
+            q = PyQuery(html).xhtml_to_html()('meta')
 
             for pr in attrs:
 
@@ -86,70 +85,67 @@ class RegexMetaPubDetector(PubDetector):
 
         super(RegexMetaPubDetector, self).__init__(name, fun)
 
+def elsevier_detector(html):
+
+    q = PyQuery(html).xhtml_to_html()
+    canonical_href = q('link[rel="canonical"]').attr('href')
+    if canonical_href:
+        return re.search('sciencedirect', canonical_href, re.I)
+
+PubDetector('elsevier', elsevier_detector)
+
 # Define detectors based on <title> tag
-TitlePubDetector('elsevier', 'sciencedirect')
-TitlePubDetector('springer', 'springer')
-TitlePubDetector('wolterskluwer', 'wolters kluwer')
+TitlePubDetector('thieme', r'thieme e-journals')
+TitlePubDetector('wolterskluwer', r'wolters kluwer')
+TitlePubDetector('wiley', r'wiley online library')
 
 # Define detectors based on <meta> tags using regex
 RegexMetaPubDetector('mit', [
-        ['name', 'dc.publisher'],
-        ['content', 'mit press'],
-    ],
-)
+    ['name', 'dc.publisher'],
+    ['content', 'mit press'],
+])
 RegexMetaPubDetector('npg', [
-        ['name', 'dc.publisher'],
-        ['content', 'nature publishing group'],
-    ],
-)
+    ['name', 'dc.publisher'],
+    ['content', 'nature publishing group'],
+])
 
 # Define detectors based on <meta> tags
 MetaPubDetector('highwire', [
-        ['name', 'HW.identifier'],
-    ]
-)
-MetaPubDetector('apa', [
-        ['name', 'citation_publisher'],
-        ['content', 'American Psychological Association'],
-    ]
-)
+    ['name', 'HW.ad-path'],
+])
+MetaPubDetector('springer', [
+    ['name', 'citation_publisher'],
+    ['content', 'Springer-Verlag'],
+])
+MetaPubDetector('springeropen', [
+    ['name', 'citation_publisher'],
+    ['content', 'Springer'],
+])
 MetaPubDetector('tandf', [
-        ['property', 'og:site_name'],
-        ['content', 'Taylor and Francis'],
-    ]
-)
-MetaPubDetector('thieme', [
-        ['name', 'citation_publisher'],
-        ['content', 'Thieme Medical Publishers'],
-    ]
-)
+    ['property', 'og:site_name'],
+    ['content', 'Taylor and Francis'],
+])
 MetaPubDetector('royal', [
-        ['name', 'DC.Publisher'],
-        ['content', 'The Royal Society'],
-    ]
-)
+    ['name', 'DC.Publisher'],
+    ['content', 'The Royal Society'],
+])
 MetaPubDetector('ama', [
-        ['name', 'citation_publisher'],
-        ['content', 'American Medical Association'],
-    ]
-)
+    ['name', 'citation_publisher'],
+    ['content', 'American Medical Association'],
+])
 MetaPubDetector('plos', [
-        ['name', 'citation_publisher'],
-        ['content', 'Public Library of Science'],
-    ]
-)
+    ['name', 'citation_publisher'],
+    ['content', 'Public Library of Science'],
+])
 MetaPubDetector('frontiers', [
-        ['name', 'citation_publisher'],
-        ['content', 'Frontiers'],
-    ]
-)
+    ['name', 'citation_publisher'],
+    ['content', 'Frontiers'],
+])
 MetaPubDetector('nas', [
-        ['name', 'citation_publisher'],
-        ['content', 'National Acad Sciences'],
-    ]
-)
+    ['name', 'citation_publisher'],
+    ['content', 'National Acad Sciences'],
+])
 MetaPubDetector('bmc', [
-        ['name', 'citation_publisher'],
-        ['content', 'BioMed Central Ltd'],
-    ]
-)
+    ['name', 'citation_publisher'],
+    ['content', 'BioMed Central Ltd'],
+])

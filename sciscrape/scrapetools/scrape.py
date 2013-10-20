@@ -1,14 +1,17 @@
-'''
+"""
 Utilities for converting between article IDs (DOI and PubMed ID)
 and full-text documents. Scrape objects can use the scrape() method
 to take an article ID, browse to the publisher's page, determine
 which publisher is hosting the article, and download the full-text
 files using the appropriate Getter classes from getters.py.
-'''
+"""
 
 # Imports
+import os
 import re
+import logging
 import urllib2
+import urlparse
 import collections
 
 # Project imports
@@ -17,11 +20,21 @@ from sciscrape.scrapetools import getters
 from sciscrape.utils import utils
 from sciscrape.utils import pubtools
 from sciscrape.utils import mechtools
-from sciscrape.utils import doiclean
 from sciscrape.utils import pmid_doi
+from sciscrape.exceptions import ScrapeError, BadDOIError
 
 # Set email
 pubtools.email = 'foo@bar.com'
+
+# URLs
+DOI_URL = 'http://dx.doi.org/'
+PUBMED_URL = 'http://www.ncbi.nlm.nih.gov/pubmed/'
+
+EXTENSIONS = {
+    'pmc': 'html',
+    'html': 'html',
+    'pdf': 'pdf',
+}
 
 # Default getters
 # Covers PLOS, Frontiers, NAS, Oxford, Highwire, Wiley, Springer
@@ -53,8 +66,6 @@ getter_map['pdf']['apa'] = getters.APAPDFGetter
 getter_map['html']['wolterskluwer'] = getters.WoltersKluwerHTMLGetter
 getter_map['pdf']['wolterskluwer'] = getters.WoltersKluwerPDFGetter
 
-class BadDOIException(Exception): pass
-
 class ScrapeInfo(object):
     
     def __init__(self, doi=None, pmid=None):
@@ -71,43 +82,37 @@ class ScrapeInfo(object):
     def pretty_status(self):
         return '; '.join(['%s: %s' % (k, self.status[k]) for k in self.status])
 
-    def save(self, save_dir='.', save_dirs={}, id_type='doi'):
-        '''
+    def save(self, name, save_dir='.', save_dirs=None):
+        """
 
-        '''
-        
-        # Try to get document ID
-        if hasattr(self, id_type):
-            id = getattr(self, id_type)
-        elif hasattr(self, 'doi'):
-            id = getattr(self, 'doi')
-        elif hasattr(self, 'pmid'):
-            id = getattr(self, 'pmid')
-        else:
-            # TODO: Write default name
-            return
-        
-        # Replace /s in ID
-        id = doiclean.doi_clean(id)
-        
-        # Make directory if necessary
-        if save_dir != '.':
-            utils.mkdir_p(save_dir)
+        """
+
+        save_dirs = save_dirs or {}
+        saved = {}
 
         # Write documents
         for doc_type in self.docs:
-            if doc_type in save_dirs:
-                save_name = '%s/%s.%s' % (save_dirs[doc_type], id, doc_type)
-            else:
-                save_name = '%s/%s.%s' % (save_dir, id, doc_type)
+
+            doc_save_dir = save_dirs.get(doc_type, save_dir)
+
+            # Make directory if necessary
+            if doc_save_dir != '.':
+                utils.mkdir_p(doc_save_dir)
+
+            file_name = '{}.{}'.format(name, EXTENSIONS[doc_type])
+            save_name = os.path.join(doc_save_dir, file_name)
+
             with open(save_name, 'w') as f:
                 f.write(self.docs[doc_type])
 
+            saved[doc_type] = {
+                'name': file_name,
+                'path': doc_save_dir,
+            }
+
+        return saved
+
 class Scrape(object):
-    
-    # URLs
-    _doi_url = 'http://dx.doi.org'
-    _pubmed_url = 'http://www.ncbi.nlm.nih.gov/pubmed'
 
     # Browser class
     _browser_klass = mechtools.PubBrowser
@@ -118,32 +123,33 @@ class Scrape(object):
         self.info = ScrapeInfo()
     
     def scrape(self, doi=None, pmid=None, fetch_pmid=True, fetch_types=None):
-        '''Download documents for a target article.
+        """Download documents for a target article.
 
-        Args:
-            doi : Article DOI
-            pmid : Article PubMed ID
-            fetch_pmid : Look up PMID if not provided
-        Returns:
-            ScrapeInfo instance
+        :param doi: Article DOI
+        :param pmid: Article PubMed ID
+        :param fetch_pmid: Look up PMID if not provided
+        :return: ScrapeInfo instance
 
-        '''
-        
+        """
         # Initialize ScrapeInfo object to store results
         self.info = ScrapeInfo(doi, pmid)
         
         # Get publisher link
         pub_link = None
         if doi:
-            pub_link = self._resolve_doi(doi)
+            try:
+                pub_link = self._resolve_doi(doi)
+            except BadDOIError:
+                logging.debug('Could not resolve DOI {}'.format(doi))
             if not pmid and fetch_pmid:
-                self.info.pmid = pmid_doi.pmid_doi({'doi' : doi})['pmid']
+                logging.debug('Looking up PMID by DOI')
+                self.info.pmid = pmid_doi.pmid_doi({'doi': doi})['pmid']
         if pmid and not pub_link:
             pub_link = self._resolve_pmid(pmid)
 
         # Quit if no publisher link found
         if not pub_link:
-            return
+            raise ScrapeError('No publisher link found')
         
         # Log publisher link to ScrapeInfo
         self.info.pub_link = pub_link
@@ -171,21 +177,21 @@ class Scrape(object):
                 get_success = getter.reget(self.info, self.browser)
                 self.info.docs[doc_type] = self.info.html
                 self.info.status[doc_type] = 'Success'
-            except Exception as e:
+            except Exception as error:
                 # Failure
-                self.info.status[doc_type] = '%s, %s' % ('Fail', str(e))
+                self.info.status[doc_type] = repr(error)
         
         # Return ScrapeInfo object
         return self.info
 
     def _resolve_doi(self, doi):
-        '''Follow DOI link, store HTML, and return final URL.'''
+        """Follow DOI link, store HTML, and return final URL."""
         
-        # Try to open DOI link, else raise BadDOIException
+        # Try to open DOI link, else raise BadDOIError
         try:
-            self.browser.open('%s/%s' % (self._doi_url, doi))
-        except urllib2.HTTPError:
-            raise BadDOIException(doi)
+            self.browser.open(urlparse.urljoin(DOI_URL, doi))
+        except (urllib2.HTTPError, urllib2.URLError):
+            raise BadDOIError(doi)
         
         # Read documents and save in ScrapeInfo
         self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
@@ -194,23 +200,21 @@ class Scrape(object):
         if re.search('doi not found',
                      self.info.init_qhtml('title').text(),
                      re.I):
-            raise BadDOIException(doi)
+            raise BadDOIError(doi)
         
         # Return URL
         return self.browser.geturl()
 
     def _resolve_pmid(self, pmid):
-        '''Follow PMID link, store HTML, and return final URL.'''
+        """Follow PMID link, store HTML, and return final URL."""
         
         # Get DOI from PubMed API
-        pminfo = pubtools.pmid_to_document(pmid)
-        if 'doi' in pminfo:
-            return self._resolve_doi(pminfo['doi'])
-        
-        # Get publisher link from PubMed site
-        self.browser.open('%s/%s' % (self._pubmed_url, pmid))
-        html, qhtml = self.browser.get_docs()
-        pub_link = qhtml('a[title^=Full text]').attr('href')
+        pub_data = pubtools.download_pmids([pmid])[0]
+        doi = pubtools.record_to_doi(pub_data)
+        if doi:
+            return self._resolve_doi(doi)
+
+        pub_link = pubtools.pmid_to_publisher_link(pmid)
         
         # Follow publisher link
         if pub_link:
@@ -221,7 +225,9 @@ class Scrape(object):
             # Read documents and save in ScrapeInfo
             self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
 
+            # Return URL
+            return self.browser.geturl()
+
 class UMScrape(Scrape):
     
     _browser_klass = mechtools.UMBrowser
-    

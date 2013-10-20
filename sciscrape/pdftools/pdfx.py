@@ -34,8 +34,8 @@ class PDFExtractor(object):
         # Send request to PDFX
         req = requests.post(
             'http://pdfx.cs.man.ac.uk', 
-            headers={'content-type':'application/pdf'}, 
-            data=pdf
+            headers={'content-type' : 'application/pdf'},
+            data=pdf,
         )
 
         # Remove encoding
