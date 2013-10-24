@@ -21,14 +21,18 @@ MEDLINE_TO_TEXT = {
     'CN': 'corporate_author',
     'CON': 'comment_on',
     'CRDT': 'create_date',
+    'CRF': 'corrected_republished_from',
+    'CRI': 'corrected_republished_in',
     'DA': 'date_created',
     'DEP': 'date_of_electronic_publication',
     'DCOM': 'date_completed',
     'DP': 'date_of_publication',
     'EDAT': 'entrez_date',
+    'EFR': 'erratum_for',
     'EIN': 'erratum_in',
     'FAU': 'full_author',
     'FIR': 'full_investigator_name',
+    'GN': 'general_note',
     'GR': 'grant_number',
     'IR': 'investigator_name',
     'JT': 'journal_title',
@@ -46,12 +50,14 @@ MEDLINE_TO_TEXT = {
     'OT': 'other_term',
     'OTO': 'other_term_owner',
     'OWN': 'owner',
+    'ORI': 'original_report_in',
     'PG': 'pagination',
     'PHST': 'publication_history_status',
     'PL': 'place_of_publication',
     'PMC': 'pubmed_central_identifier',
     'PMCR': 'pubmed_central_release',
     'PMID': 'pubmed_unique_identifier',
+    'PRIN': 'published_retracted_in',
     'PST': 'publication_status',
     'PT': 'publication_type',
     'RF': 'number_of_references',
@@ -76,8 +82,8 @@ def ensure_email(func):
             else:
                 raise EntrezEmailError(
                     "Email address not defined. "
-                    "When using the pubtools module, always provide your email address: "
-                    ">>> from sciscrape.utils import pubtools "
+                    "When using the pubtools module, always provide your email address: \n"
+                    ">>> from sciscrape.utils import pubtools \n"
                     ">>> pubtools.email = 'foo@bar.baz' "
                 )
         return func(*args, **kwargs)
@@ -139,21 +145,17 @@ def _contains_publisher_url():
     return False
 
 def pmid_to_publisher_link(pmid):
-    '''Get publisher link from PubMed.
+    """Get publisher link from PubMed.
 
-    Args:
-        pmid (int / str): PubMed ID
-    Returns:
-        pub_link: Link to document on publisher site
+    :param pmid: PubMed ID
+    :return: Link to document on publisher site
 
-    '''
-    
+    """
     # Get PubMed HTML
     pubmed_url = urlparse.urljoin(PUBMED_URL, pmid)
     req = requests.get(pubmed_url)
 
-    # Note: Use ``content`` property of request
-    # rather than ``text`` so that PyQuery won't 
-    # choke on unicode input.
+    # Note: Use ``content`` property of request rather than ``text`` so that
+    # PyQuery won't choke on unicode input.
     html_parse = PyQuery(req.content).xhtml_to_html()
     return html_parse('a').filter(_contains_publisher_url).attr('href')

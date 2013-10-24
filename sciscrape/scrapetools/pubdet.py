@@ -98,6 +98,7 @@ PubDetector('elsevier', elsevier_detector)
 TitlePubDetector('thieme', r'thieme e-journals')
 TitlePubDetector('wolterskluwer', r'wolters kluwer')
 TitlePubDetector('wiley', r'wiley online library')
+TitlePubDetector('npg_old', r'nature citation')
 
 # Define detectors based on <meta> tags using regex
 RegexMetaPubDetector('mit', [
@@ -148,4 +149,8 @@ MetaPubDetector('nas', [
 MetaPubDetector('bmc', [
     ['name', 'citation_publisher'],
     ['content', 'BioMed Central Ltd'],
+])
+MetaPubDetector('ieee', [
+    ['name', 'citation_publisher'],
+    ['content', 'IEEE'],
 ])

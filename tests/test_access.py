@@ -32,6 +32,10 @@ params = [
     ('wolterskluwer_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm?issn=0959-4965&volume=24&issue=14&spage=763', True),
     ('wolterskluwer_no_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm?issn=0959-4965&volume=24&issue=14&spage=768', False),
 
+    # IEEE
+    ('ieee_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6527311', True),
+    ('ieee_no_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=4527218', False),
+
 ]
 
 class TestAccess(unittest.TestCase):

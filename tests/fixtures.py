@@ -23,6 +23,18 @@ fixtures = [
                   html_url='http://www.frontiersin.org/Journal/10.3389/fnins.2012.00149/full',
                   pdf_url='http://www.frontiersin.org/Journal/DownloadFile/1/1223/33928/1/21/fnins-06-00149_pdf',
                   pmc_url='http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3014651/'),
+    # Flagship Nature journal style (Nature, Nature Neuroscience, etc.)
+    ScrapeFixture('npg', '23396282',
+                  'http://www.nature.com/nmeth/journal/v10/n3/full/nmeth.2365.html',
+                  html_url='http://www.nature.com/nmeth/journal/v10/n3/full/nmeth.2365.html',
+                  pdf_url='http://www.nature.com/nmeth/journal/v10/n3/pdf/nmeth.2365.pdf',
+                  ),
+    # Secondary Nature journal style (Neuropsychopharmacology, Oncogene, etc.)
+    ScrapeFixture('npg', '22907434',
+                  'http://www.nature.com/onc/journal/v32/n28/full/onc2012359a.html',
+                  html_url='http://www.nature.com/onc/journal/v32/n28/full/onc2012359a.html',
+                  pdf_url='http://www.nature.com/onc/journal/v32/n28/pdf/onc2012359a.pdf',
+                  ),
     ScrapeFixture('mit', '19929323',
                   'http://www.mitpressjournals.org/doi/abs/10.1162/jocn.2009.21407?url_ver=Z39.88-2003&rfr_id=ori:rid:crossref.org&rfr_dat=cr_pub%3dpubmed',
                   html_url='http://www.mitpressjournals.org/doi/full/10.1162/jocn.2009.21407',
@@ -59,5 +71,10 @@ fixtures = [
                   'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm;jsessionid=Sk0LdzQnrgTj45GChL11g16jpc448ylMQVtbcJLrrGzzkGVCQk2f!1583820841!181195628!8091!-1?issn=0959-4965&volume=24&issue=14&spage=763',
                   html_url='http://journals.lww.com/neuroreport/Fulltext/2013/10020/N_methyl_D_aspartate_receptors_and_protein.1.aspx',
                   pdf_url='http://pdfs.journals.lww.com/neuroreport/2013/10020/N_methyl_D_aspartate_receptors_and_protein.1.pdf?token=method|ExpireAbsolute;source|Journals;ttl|1382299311840;payload|mY8D3u1TCCsNvP5E421JYPPlNl9ZUXrQDsjmMHeXqBgfxP56d5BAis+WhfSrPR1S6lcHrAT5WTvTkrI7Jc1zUq2UlEn8N1x7qr2heZXbSZE2/LnQkUnbAwLtuHlqxiruZhFwwtFf4aeU4rMgwns+8TDbNbAkOUlffcIt0OqswFvWf97qU1+XR+GRM7R1S2drJjlMZyk5umnCyX0ZsO+WQO3OqrC6kWZHGFmwsUyPoy3TkarWdvvy6Y+Y2j71uz08ZT48Kq4FnoD9k2sZ/f2+VtLuq7uoIKDiRliJeppVX+rw4UyT+wiUZhSlAJO7dAyjR9vmyVAWVtaC6WwAPrLYreszSV1KWThE7hh6oMJQ6lmjEbXKC+gaal/PsKlfuCcwBrUqJIORKZEJNXxZBdgr3PQsdpBR5D41VaEH2MOCVFQOReXo4fsg/YHzlI735ThKGKWml7j5Rn+50uie6sSdJqjf0QLWOa0q+IPzv3lP9DbtjtVBzj37I05+xyFEQYy8hkPvrHfu33uPvCYtoLj6J9uZawa0r/hG4jNiOlz9FC7GJdeYruj0bK5VQBSvsgdY/dBIMeG3lNTXUCUcvJSluK0aGIw6Dz6nHkcE/3S4anFLYlT+riIYTCGiEX23hvUO;hash|vmv2MykiUFT+CiEbJ8nt1w==',
-                  )
+                  ),
+    ScrapeFixture('ieee', '10.1109/JTEHM.2013.2262024',
+                  'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6527311',
+                  html_url='http://ieeexplore.ieee.org/xpls/icp.jsp?arnumber=6527311',
+                  pdf_url='http://ieeexplore.ieee.org/ielx7/6221039/6336546/06527311.pdf?tp=&arnumber=6527311&isnumber=6336546',
+                  ),
 ]

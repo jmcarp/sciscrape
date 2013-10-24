@@ -48,8 +48,12 @@ getter_map = {
 getter_map['html']['elsevier'] = getters.ElsevierHTMLGetter
 getter_map['pdf']['elsevier'] = getters.ElsevierPDFGetter
 
-getter_map['html']['npg'] = getters.NPGHTMLGetter
+getter_map['html']['wiley'] = getters.WileyHTMLGetter
+
 getter_map['pdf']['npg'] = getters.NPGPDFGetter
+
+getter_map['html']['npg_old'] = getters.NPGOldHTMLGetter
+getter_map['pdf']['npg_old'] = getters.NPGOldPDFGetter
 
 getter_map['html']['mit'] = getters.MITHTMLGetter
 getter_map['pdf']['mit'] = getters.MITPDFGetter
@@ -65,6 +69,12 @@ getter_map['pdf']['apa'] = getters.APAPDFGetter
 
 getter_map['html']['wolterskluwer'] = getters.WoltersKluwerHTMLGetter
 getter_map['pdf']['wolterskluwer'] = getters.WoltersKluwerPDFGetter
+
+getter_map['html']['ieee'] = getters.IEEEHTMLGetter
+getter_map['pdf']['ieee'] = getters.IEEEPDFGetter
+
+getter_map['html']['springer'] = getters.SpringerHTMLGetter
+getter_map['pdf']['springer'] = getters.MetaPDFGetter
 
 class ScrapeInfo(object):
     

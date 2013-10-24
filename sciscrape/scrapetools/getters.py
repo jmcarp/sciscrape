@@ -49,15 +49,21 @@ class DocGetter(object):
     '''Base class for document getters.'''
     
     def get_link(self, cache, browser):
-        
+        """
+
+        """
         pass
 
     def post_process(self, cache, browser):
-        
+        """
+
+        """
         pass
 
     def validate(self, cache):
+        """
 
+        """
         return True
     
     # Access white-list functions
@@ -102,10 +108,6 @@ class DocGetter(object):
         
         # Get document link
         link = self.get_link(cache, browser)
-        if link:
-            print 'Browsing to %s...' % (link)
-
-        # Open document link
         if link:
             browser.open(link)
             cache.html, cache.qhtml = browser.get_docs()
@@ -163,10 +165,14 @@ class PDFGetter(DocGetter):
             return
 
         # Check for PDF in <iframe> tag
-        iframe_link = cache.qhtml('iframe').attr('src')
-        if iframe_link:
-            browser.open(iframe_link)
-            cache.html, cache.qhtml = browser.get_docs()
+        iframe_links = cache.qhtml('frame, iframe').map(
+            lambda: PyQuery(this).attr('src')
+        )
+        for link in iframe_links:
+            if re.search(r'pdf', link):
+                browser.open(link)
+                cache.html, cache.qhtml = browser.get_docs()
+                return
 
     def validate(self, text):
         
@@ -177,12 +183,14 @@ class PMCGetter(HTMLGetter):
     _base_url = 'http://www.ncbi.nlm.nih.gov/pmc/articles/pmid'
 
     def get_link(self, cache, browser):
-        
         return '%s/%s' % (self._base_url, cache.pmid)
 
     def validate(self, text):
-        
         return not bool(re.search('ipmc11|ipmc12', text, re.I))
+
+    @retry.retry(Exception, tries=3, backoff=1)
+    def reget(self, cache, browser):
+        return self.get(cache, browser)
 
 class MetaHTMLGetter(MetaGetter, HTMLGetter):
     
@@ -447,15 +455,94 @@ class ThiemePDFGetter(MetaPDFGetter):
 # Nature Publishing Group #
 ###########################
 
-class NPGHTMLGetter(HTMLGetter):
-    
-    def get_link(self, cache, browser):
-        
-        pass
+class NatureGetter(DocGetter):
 
-class NPGPDFGetter(PDFGetter):
+    _access_blacklist = [
+        RegexAccessRule(r'To read this story in full you will need to login '
+                        r'or make a payment')
+    ]
+
+class NPGPDFGetter(NatureGetter, PDFGetter):
     
     def get_link(self, cache, browser):
-        
-        return cache.init_qhtml('a.download-pdf')\
+
+        link1 = cache.init_qhtml('li.download-pdf a[href$="pdf"]')\
             .attr('href')
+        if link1:
+            return link1
+
+        link2 = cache.init_qhtml('a.download-pdf').attr('href')
+        if link2:
+            return link2
+
+class NatureOldGetter(NatureGetter):
+
+    def get_link(self, cache, browser):
+        """Some old Nature articles (e.g. PMID 10862705) are routed through
+        Nature's doifinder service; detect doifinder links and browse to real
+        content.
+
+        """
+        doifinder_link = cache.init_qhtml('a.articletext').attr('href')
+        if doifinder_link:
+            browser.open(doifinder_link)
+
+class NPGOldHTMLGetter(NatureOldGetter, HTMLGetter):
+
+    def get_link(self, cache, browser):
+        NatureGetter.get_link(self, cache, browser)
+        return browser.geturl()
+
+class NPGOldPDFGetter(NatureOldGetter, PDFGetter):
+
+    def get_link(self, cache, browser):
+        NatureGetter.get_link(self, cache, browser)
+        html, qhtml = browser.get_docs()
+        return qhtml('a[href$="pdf"]').attr('href')
+
+########
+# IEEE #
+########
+
+ieee_access_blacklist = [
+    RegexAccessRule(r'Sign-In or Purchase')
+]
+
+class IEEEHTMLGetter(HTMLGetter):
+
+    _access_blacklist = ieee_access_blacklist
+
+    def get_link(self, cache, browser):
+        return cache.init_qhtml('a#full-text-html')\
+            .attr('href')
+
+class IEEEPDFGetter(MetaPDFGetter):
+    _access_blacklist = ieee_access_blacklist
+
+############
+# Springer #
+############
+
+class SpringerAccessRule(AccessRule):
+    """ Custom black-list rule for Springer HTML documents. """
+    def __call__(self, text, qtext):
+        return not bool(qtext('.Fulltext'))
+
+class SpringerHTMLGetter(MetaHTMLGetter):
+    _access_blacklist = [
+        SpringerAccessRule()
+    ]
+
+#########
+# Wiley #
+#########
+
+class WileyAccessRule(AccessRule):
+    """ Custom black-list rule for Wiley HTML documents. """
+    def __call__(self, text, qtext):
+        return not bool(qtext('select.jumpSelect'))
+
+class WileyHTMLGetter(MetaHTMLGetter):
+    _access_blacklist = [
+        WileyAccessRule()
+    ]

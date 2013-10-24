@@ -1,3 +1,4 @@
+import re
 import unittest
 from nose.tools import *
 from nose_parameterized import parameterized
@@ -32,15 +33,19 @@ def fixtures_to_params(fixtures):
         for fixture in fixtures
     ], [])
 
-def remove_qs(url):
+def clean_url(url):
 
-    url_clean = urlparse.urlparse(url)._replace(query=None)
+    url_parsed = urlparse.urlparse(url)
+    url_clean = url_parsed._replace(
+        netloc=re.sub(':.*', '', url_parsed.netloc),
+        query=None,
+    )
     return urlparse.urlunparse(url_clean)
 
-def equal_modulo_qs(url1, url2):
+def equal_cleaned(url1, url2):
 
     return url1 == url2 or \
-            remove_qs(url1) == remove_qs(url2)
+            clean_url(url1) == clean_url(url2)
 
 class TestGetters(unittest.TestCase):
 
@@ -71,4 +76,4 @@ class TestGetters(unittest.TestCase):
         html_getter.get(self.info, self.browser)
 
         # Check download link
-        assert_true(equal_modulo_qs(self.browser.geturl(), expected_url))
+        assert_true(equal_cleaned(self.browser.geturl(), expected_url))
