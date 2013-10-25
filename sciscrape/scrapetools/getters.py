@@ -88,7 +88,7 @@ class DocGetter(object):
     ]
 
     def check_access(self, text, qtext):
-        '''Check whether we have access to an article.'''
+        """ Check whether we have access to an article. """
         
         # Check white-list functions
         for wfun in self._access_whitelist:
@@ -104,12 +104,15 @@ class DocGetter(object):
         return True
 
     def get(self, cache, browser):
-        '''Download document, then store in cache.'''
+        """ Download document, then store in cache. """
         
         # Get document link
         link = self.get_link(cache, browser)
         if link:
-            browser.open(link)
+            try:
+                browser.open(link)
+            except:
+                raise NoAccessError('No access')
             cache.html, cache.qhtml = browser.get_docs()
         else:
             cache.html, cache.qhtml = cache.init_html, cache.init_qhtml
@@ -540,9 +543,32 @@ class SpringerHTMLGetter(MetaHTMLGetter):
 class WileyAccessRule(AccessRule):
     """ Custom black-list rule for Wiley HTML documents. """
     def __call__(self, text, qtext):
-        return not bool(qtext('select.jumpSelect'))
+        return not bool(qtext('div.headingCont'))
 
 class WileyHTMLGetter(MetaHTMLGetter):
     _access_blacklist = [
         WileyAccessRule()
     ]
+
+###########
+# Informa #
+###########
+
+class InformaGetter(DocGetter):
+
+    _access_blacklist = [
+        RegexAccessRule(r'you have requested the following article')
+    ]
+
+class InformaHTMLGetter(InformaGetter, HTMLGetter):
+
+    def get_link(self, cache, browser):
+        return cache.init_qhtml('a[href*="doi/full"]').attr('href')
+
+class InformaPDFGetter(InformaGetter, PDFGetter):
+
+    def get_link(self, cache, browser):
+        pdf_plus = cache.init_qhtml('a[href*="doi/pdfplus"]').attr('href')
+        if pdf_plus:
+            return pdf_plus
+        return cache.init_qhtml('a[href*="doi/pdf"]').attr('href')

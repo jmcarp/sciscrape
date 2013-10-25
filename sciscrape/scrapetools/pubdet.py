@@ -109,6 +109,10 @@ RegexMetaPubDetector('npg', [
     ['name', 'dc.publisher'],
     ['content', 'nature publishing group'],
 ])
+RegexMetaPubDetector('informa', [
+    ['name', 'dc.publisher'],
+    ['content', 'informa'],
+])
 
 # Define detectors based on <meta> tags
 MetaPubDetector('highwire', [

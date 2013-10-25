@@ -18,7 +18,7 @@ params = [
 
     # Wiley
     ('wiley_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21406/full', True),
-    ('wiley_no_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21440/abstract', True),
+    ('wiley_no_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21440/abstract', False),
 
     # Springer
     ('springer_access', 'springer', 'http://link.springer.com/article/10.3758/s13415-012-0141-7', True),
@@ -35,6 +35,10 @@ params = [
     # IEEE
     ('ieee_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6527311', True),
     ('ieee_no_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=4527218', False),
+
+    # Informa
+    ('informa_access', 'informa', 'http://informahealthcare.com/doi/abs/10.3109/08990220.2010.513111', True),
+    ('informa_no_access', 'informa', 'http://informahealthcare.com/doi/abs/10.3109/08990220.2012.686935', False),
 
 ]
 

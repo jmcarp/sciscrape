@@ -76,6 +76,9 @@ getter_map['pdf']['ieee'] = getters.IEEEPDFGetter
 getter_map['html']['springer'] = getters.SpringerHTMLGetter
 getter_map['pdf']['springer'] = getters.MetaPDFGetter
 
+getter_map['html']['informa'] = getters.InformaHTMLGetter
+getter_map['pdf']['informa'] = getters.InformaPDFGetter
+
 class ScrapeInfo(object):
     
     def __init__(self, doi=None, pmid=None):

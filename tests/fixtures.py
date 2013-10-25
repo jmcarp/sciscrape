@@ -77,4 +77,9 @@ fixtures = [
                   html_url='http://ieeexplore.ieee.org/xpls/icp.jsp?arnumber=6527311',
                   pdf_url='http://ieeexplore.ieee.org/ielx7/6221039/6336546/06527311.pdf?tp=&arnumber=6527311&isnumber=6336546',
                   ),
+    ScrapeFixture('informa', '20954892',
+                  'http://informahealthcare.com/doi/abs/10.3109/08990220.2010.513111',
+                  html_url='http://informahealthcare.com/doi/full/10.3109/08990220.2010.513111',
+                  pdf_url='http://informahealthcare.com/doi/pdfplus/10.3109/08990220.2010.513111',
+                  ),
 ]
