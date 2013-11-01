@@ -12,6 +12,9 @@ import getpass
 import urlparse
 import mechanize
 from pyquery import PyQuery
+from urllib2 import URLError
+
+from sciscrape.utils import retry
 
 class PubBrowser(object):
         
@@ -60,12 +63,17 @@ class PubBrowser(object):
     # Expose methods of self._b
 
     def open(self, url, *args, **kwargs):
-        
         self._b.open(url, *args, **kwargs)
 
+    @retry.retry(URLError, tries=3, default='')
+    def reopen(self, url, *args, **kwargs):
+        self.open(url, *args, **kwargs)
+
     def geturl(self):
-        
-        return self._b.geturl()
+        try:
+            return self._b.geturl()
+        except mechanize.BrowserStateError:
+            return None
     
 class UMBrowser(PubBrowser):
     

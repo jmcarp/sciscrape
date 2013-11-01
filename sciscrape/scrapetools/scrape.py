@@ -10,9 +10,10 @@ files using the appropriate Getter classes from getters.py.
 import os
 import re
 import logging
-import urllib2
 import urlparse
 import collections
+from urllib2 import HTTPError, URLError
+from httplib import HTTPException
 
 # Project imports
 from sciscrape.scrapetools import pubdet
@@ -21,6 +22,7 @@ from sciscrape.utils import utils
 from sciscrape.utils import pubtools
 from sciscrape.utils import mechtools
 from sciscrape.utils import pmid_doi
+from sciscrape.utils import retry
 from sciscrape.exceptions import ScrapeError, BadDOIError
 
 # Set email
@@ -31,20 +33,23 @@ DOI_URL = 'http://dx.doi.org/'
 PUBMED_URL = 'http://www.ncbi.nlm.nih.gov/pubmed/'
 
 EXTENSIONS = {
-    'pmc': 'html',
+    'pmc': 'pmc',
     'html': 'html',
     'pdf': 'pdf',
 }
 
 # Default getters
-# Covers PLOS, Frontiers, NAS, Oxford, Highwire, Wiley, Springer
+# Covers Frontiers, NAS, Oxford, Highwire, Wiley, Springer
 getter_map = {
-    'html' : collections.defaultdict(lambda: getters.MetaHTMLGetter),
-    'pdf' : collections.defaultdict(lambda: getters.MetaPDFGetter),
-    'pmc' : collections.defaultdict(lambda: getters.PMCGetter),
+    'html': collections.defaultdict(lambda: getters.MetaHTMLGetter),
+    'pdf': collections.defaultdict(lambda: getters.MetaPDFGetter),
+    'pmc': collections.defaultdict(lambda: getters.PMCGetter),
 }
 
 # Publisher-specific getters
+getter_map['html']['plos'] = getters.PassHTMLGetter
+getter_map['html']['npg'] = getters.PassHTMLGetter
+
 getter_map['html']['elsevier'] = getters.ElsevierHTMLGetter
 getter_map['pdf']['elsevier'] = getters.ElsevierPDFGetter
 
@@ -78,6 +83,11 @@ getter_map['pdf']['springer'] = getters.MetaPDFGetter
 
 getter_map['html']['informa'] = getters.InformaHTMLGetter
 getter_map['pdf']['informa'] = getters.InformaPDFGetter
+
+getter_map['html']['ios'] = getters.IOSHTMLGetter
+getter_map['pdf']['ios'] = getters.IOSPDFGetter
+
+getter_map['html']['cambridge'] = getters.CambridgeHTMLGetter
 
 class ScrapeInfo(object):
     
@@ -179,7 +189,7 @@ class Scrape(object):
             
             # Browser to publisher link
             if self.browser.geturl() != pub_link:
-                self.browser.open(pub_link)
+                self.browser.reopen(pub_link)
 
             # Identify getter
             getter = getter_map[doc_type][self.info.publisher]()
@@ -197,27 +207,27 @@ class Scrape(object):
         # Return ScrapeInfo object
         return self.info
 
+
+    @retry.retry((HTTPError, HTTPException, URLError), tries=3, default='')
     def _resolve_doi(self, doi):
         """Follow DOI link, store HTML, and return final URL."""
         
-        # Try to open DOI link, else raise BadDOIError
-        try:
-            self.browser.open(urlparse.urljoin(DOI_URL, doi))
-        except (urllib2.HTTPError, urllib2.URLError):
-            raise BadDOIError(doi)
+        # Open DOI link
+        self.browser.open(urlparse.urljoin(DOI_URL, doi))
         
         # Read documents and save in ScrapeInfo
         self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
         
         # Check for bad DOI
-        if re.search('doi not found',
-                     self.info.init_qhtml('title').text(),
-                     re.I):
-            raise BadDOIError(doi)
+        if self.info.init_qhtml:
+            title_text = self.info.init_qhtml('title').text()
+            if title_text and re.search(r'doi not found', title_text, re.I):
+                raise BadDOIError(doi)
         
         # Return URL
         return self.browser.geturl()
 
+    @retry.retry((HTTPError, HTTPException, URLError), tries=3, default='')
     def _resolve_pmid(self, pmid):
         """Follow PMID link, store HTML, and return final URL."""
         

@@ -99,6 +99,7 @@ TitlePubDetector('thieme', r'thieme e-journals')
 TitlePubDetector('wolterskluwer', r'wolters kluwer')
 TitlePubDetector('wiley', r'wiley online library')
 TitlePubDetector('npg_old', r'nature citation')
+TitlePubDetector('ios', r'ios press')
 
 # Define detectors based on <meta> tags using regex
 RegexMetaPubDetector('mit', [
@@ -117,6 +118,14 @@ RegexMetaPubDetector('informa', [
 # Define detectors based on <meta> tags
 MetaPubDetector('highwire', [
     ['name', 'HW.ad-path'],
+])
+MetaPubDetector('apa', [
+    ['name', 'citation_publisher'],
+    ['content', 'American Psychological Association'],
+])
+MetaPubDetector('cambridge', [
+    ['name', 'citation_publisher'],
+    ['content', 'Cambridge University Press'],
 ])
 MetaPubDetector('springer', [
     ['name', 'citation_publisher'],

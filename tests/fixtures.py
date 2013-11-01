@@ -1,7 +1,7 @@
 
 class ScrapeFixture(object):
 
-    def __init__(self, publisher, pmid, start_url, html_url=None, pdf_url=None, pmc_url=None):
+    def __init__(self, publisher, pmid, start_url, html_url=None, pdf_url=None, pmc_url=None, params=None):
 
         self.publisher = publisher
         self.pmid = pmid
@@ -11,6 +11,7 @@ class ScrapeFixture(object):
             'pdf': pdf_url,
             'pmc': pmc_url,
         }
+        self.params = params or {}
 
 fixtures = [
     ScrapeFixture('plos', '22216274',
@@ -81,5 +82,12 @@ fixtures = [
                   'http://informahealthcare.com/doi/abs/10.3109/08990220.2010.513111',
                   html_url='http://informahealthcare.com/doi/full/10.3109/08990220.2010.513111',
                   pdf_url='http://informahealthcare.com/doi/pdfplus/10.3109/08990220.2010.513111',
+                  ),
+    ScrapeFixture('cambridge', '23985326',
+                  'http://journals.cambridge.org/action/displayAbstract?fromPage=online&aid=9040968',
+                  html_url='http://journals.cambridge.org/action/displayFulltext?type=6&fid=9040969&jid=PAR&volumeId=140&issueId=13&aid=9040968&%20bodyId=&membershipNumber=&societyETOCSession=%20&fulltextType=RA&fileId=S0031182013001182',
+                  pdf_url='http://journals.cambridge.org/download.php?file=%2FPAR%2FPAR140_13%2FS0031182013001182a.pdf&code=8f00ba1654e95f8adb323feb4fadd1e3',
+                  pmc_url='http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3806042/',
+                  params=['file'],
                   ),
 ]

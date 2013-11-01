@@ -8,6 +8,7 @@ from sciscrape.scrapetools import scrape
 
 from .fixtures import fixtures
 
+import urllib
 import urlparse
 
 def build_name(fixture, document_type):
@@ -21,7 +22,8 @@ def fixture_to_params(fixture):
             fixture.pmid,
             document_type,
             fixture.start_url,
-            expected_url
+            expected_url,
+            fixture.params,
         )
         for document_type, expected_url in fixture.expected_urls.iteritems()
         if expected_url is not None
@@ -33,19 +35,23 @@ def fixtures_to_params(fixtures):
         for fixture in fixtures
     ], [])
 
-def clean_url(url):
+def clean_url(url, *params):
 
     url_parsed = urlparse.urlparse(url)
+    query = dict(urlparse.parse_qsl(url_parsed.query))
     url_clean = url_parsed._replace(
         netloc=re.sub(':.*', '', url_parsed.netloc),
-        query=None,
+        query=urllib.urlencode({
+            key: query.get(key)
+            for key in params
+        }),
     )
     return urlparse.urlunparse(url_clean)
 
-def equal_cleaned(url1, url2):
+def equal_cleaned(url1, url2, *params):
 
     return url1 == url2 or \
-            clean_url(url1) == clean_url(url2)
+            clean_url(url1, *params) == clean_url(url2, *params)
 
 class TestGetters(unittest.TestCase):
 
@@ -55,7 +61,7 @@ class TestGetters(unittest.TestCase):
         self.info = scrape.ScrapeInfo()
 
     @parameterized.expand(fixtures_to_params(fixtures))
-    def test_getter(self, _, publisher, pmid, document_type, start_url, expected_url):
+    def test_getter(self, _, publisher, pmid, document_type, start_url, expected_url, params=None):
         """Test that document getter browses to the expected URL.
 
         :param _: Test name; used by nose_parameterized
@@ -76,4 +82,4 @@ class TestGetters(unittest.TestCase):
         html_getter.get(self.info, self.browser)
 
         # Check download link
-        assert_true(equal_cleaned(self.browser.geturl(), expected_url))
+        assert_true(equal_cleaned(self.browser.geturl(), expected_url), *params)

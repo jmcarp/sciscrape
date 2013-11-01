@@ -108,6 +108,8 @@ class DocGetter(object):
         
         # Get document link
         link = self.get_link(cache, browser)
+        if not link:
+            raise NoAccessError('No access')
         if link:
             try:
                 browser.open(link)
@@ -135,7 +137,7 @@ class DocGetter(object):
         return self.get(cache, browser)
 
 class MetaGetter(DocGetter):
-    '''Base class for getters that use <meta> tags.'''
+    """ Base class for getters that use <meta> tags. """
     
     _attrs = []
     _filter = None
@@ -149,8 +151,12 @@ class MetaGetter(DocGetter):
 
         if self._filter:
             tags = tags.filter(self._filter)
-        
-        return tags.attr('content')
+
+        content = tags.attr('content')
+        if content:
+            return content
+
+        raise NotFoundError('Link not found')
 
 class HTMLGetter(DocGetter):
     '''Base class for HTML getters.'''
@@ -207,6 +213,15 @@ class MetaPDFGetter(MetaGetter, PDFGetter):
         ['name', 'citation_pdf_url'],
     ]
 
+########
+# PLOS #
+########
+
+class PassHTMLGetter(HTMLGetter):
+
+    def get_link(self, cache, browser):
+        return browser.geturl()
+
 ############
 # Elsevier #
 ############
@@ -255,7 +270,12 @@ class TaylorFrancisPDFGetter(PDFGetter):
 #######
 
 class APAGetter(DocGetter):
-    
+
+    _access_blacklist = [
+        RegexAccessRule(r'the function listed is not available with your '
+                        r'current browser configuration')
+    ]
+
     def open_splash(self, cache, browser):
         '''Browse to APA splash page for article.'''
         
@@ -309,7 +329,8 @@ class APAPDFGetter(APAGetter, PDFGetter):
         html, qhtml = browser.get_docs()
         
         # Return full-text PDF link
-        return qhtml('iframe#pdfIframe').attr('src')
+        return qhtml('#pdfUrl').attr('value')
+        #return qhtml('iframe#pdfIframe').attr('src')
 
 ##################
 # Wolters-Kluwer #
@@ -493,13 +514,13 @@ class NatureOldGetter(NatureGetter):
 class NPGOldHTMLGetter(NatureOldGetter, HTMLGetter):
 
     def get_link(self, cache, browser):
-        NatureGetter.get_link(self, cache, browser)
+        NatureOldGetter.get_link(self, cache, browser)
         return browser.geturl()
 
 class NPGOldPDFGetter(NatureOldGetter, PDFGetter):
 
     def get_link(self, cache, browser):
-        NatureGetter.get_link(self, cache, browser)
+        NatureOldGetter.get_link(self, cache, browser)
         html, qhtml = browser.get_docs()
         return qhtml('a[href$="pdf"]').attr('href')
 
@@ -543,7 +564,7 @@ class SpringerHTMLGetter(MetaHTMLGetter):
 class WileyAccessRule(AccessRule):
     """ Custom black-list rule for Wiley HTML documents. """
     def __call__(self, text, qtext):
-        return not bool(qtext('div.headingCont'))
+        return not bool(qtext('div.section'))
 
 class WileyHTMLGetter(MetaHTMLGetter):
     _access_blacklist = [
@@ -572,3 +593,38 @@ class InformaPDFGetter(InformaGetter, PDFGetter):
         if pdf_plus:
             return pdf_plus
         return cache.init_qhtml('a[href*="doi/pdf"]').attr('href')
+
+#############
+# IOS Press #
+#############
+
+class IOSGetter(DocGetter):
+    _access_blacklist = [
+        RegexAccessRule(r'log in to verify access')
+    ]
+
+class IOSHTMLGetter(IOSGetter, HTMLGetter):
+
+    def get_link(self, cache, browser):
+        return cache.init_qhtml('a[href$="fulltext.html"]').attr('href')
+
+class IOSPDFGetter(IOSGetter, PDFGetter):
+
+    def get_link(self, cache, browser):
+        return cache.init_qhtml('a[href$="fulltext.pdf"]').attr('href')
+
+#############
+# Cambridge #
+#############
+
+class CambridgeHTMLGetter(HTMLGetter):
+
+    _access_blacklist = [
+        RegexAccessRule(r'buy this article')
+    ]
+
+    def get_link(self, cache, browser):
+        link = cache.init_qhtml('a.typeHTML').attr('href')
+        if link:
+            return re.sub(r'\s', '', link)
+

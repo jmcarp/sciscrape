@@ -8,37 +8,42 @@ from sciscrape.exceptions import NoAccessError
 
 params = [
 
-    # ScienceDirect
-    ('elsevier_access', 'elsevier', 'http://www.sciencedirect.com/science/article/pii/S1053811913004539', True),
-    ('elsevier_no_access', 'elsevier', 'http://www.sciencedirect.com/science/article/pii/S1053811913005442', False),
+    ## ScienceDirect
+    #('elsevier_access', 'elsevier', 'http://www.sciencedirect.com/science/article/pii/S1053811913004539', True),
+    #('elsevier_no_access', 'elsevier', 'http://www.sciencedirect.com/science/article/pii/S1053811913005442', False),
+    #
+    ## Highwire
+    #('highwire_access', 'highwire', 'http://cercor.oxfordjournals.org/content/23/7/1572.abstract', True),
+    #('highwire_no_access', 'highwire', 'http://cercor.oxfordjournals.org/content/23/7/1509.abstract', False),
+    #
+    ## Wiley
+    #('wiley_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21406/full', True),
+    #('wiley_no_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21440/abstract', False),
+    #
+    ## Springer
+    #('springer_access', 'springer', 'http://link.springer.com/article/10.3758/s13415-012-0141-7', True),
+    #('springer_no_access', 'springer', 'http://link.springer.com/article/10.3758/s13415-012-0104-z', False),
+    #
+    ## Thieme
+    #('thieme_access', 'thieme', 'https://www.thieme-connect.com/ejournals/abstract/10.1055/s-0033-1346973', True),
+    #('thieme_no_access', 'thieme', 'https://www.thieme-connect.com/DOI/DOI?10.1055/s-2008-1071333', False),
+    #
+    ## Wolters Kluwer
+    #('wolterskluwer_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm?issn=0959-4965&volume=24&issue=14&spage=763', True),
+    #('wolterskluwer_no_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm?issn=0959-4965&volume=24&issue=14&spage=768', False),
+    #
+    ## IEEE
+    #('ieee_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6527311', True),
+    #('ieee_no_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=4527218', False),
+    #
+    ## Informa
+    #('informa_access', 'informa', 'http://informahealthcare.com/doi/abs/10.3109/08990220.2010.513111', True),
+    #('informa_no_access', 'informa', 'http://informahealthcare.com/doi/abs/10.3109/08990220.2012.686935', False),
 
-    # Highwire
-    ('highwire_access', 'highwire', 'http://cercor.oxfordjournals.org/content/23/7/1572.abstract', True),
-    ('highwire_no_access', 'highwire', 'http://cercor.oxfordjournals.org/content/23/7/1509.abstract', False),
+    # Cambridge
+    ('cambridge_access', 'cambridge', 'http://journals.cambridge.org/action/displayAbstract?aid=9040968', True),
+    ('cambridge_no_access', 'cambridge', 'http://journals.cambridge.org/action/displayAbstract?aid=9040962', False),
 
-    # Wiley
-    ('wiley_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21406/full', True),
-    ('wiley_no_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21440/abstract', False),
-
-    # Springer
-    ('springer_access', 'springer', 'http://link.springer.com/article/10.3758/s13415-012-0141-7', True),
-    ('springer_no_access', 'springer', 'http://link.springer.com/article/10.3758/s13415-012-0104-z', False),
-
-    # Thieme
-    ('thieme_access', 'thieme', 'https://www.thieme-connect.com/ejournals/abstract/10.1055/s-0033-1346973', True),
-    ('thieme_no_access', 'thieme', 'https://www.thieme-connect.com/DOI/DOI?10.1055/s-2008-1071333', False),
-
-    # Wolters Kluwer
-    ('wolterskluwer_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm?issn=0959-4965&volume=24&issue=14&spage=763', True),
-    ('wolterskluwer_no_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm?issn=0959-4965&volume=24&issue=14&spage=768', False),
-
-    # IEEE
-    ('ieee_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6527311', True),
-    ('ieee_no_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=4527218', False),
-
-    # Informa
-    ('informa_access', 'informa', 'http://informahealthcare.com/doi/abs/10.3109/08990220.2010.513111', True),
-    ('informa_no_access', 'informa', 'http://informahealthcare.com/doi/abs/10.3109/08990220.2012.686935', False),
 
 ]
 
