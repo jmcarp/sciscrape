@@ -16,13 +16,13 @@ from sciscrape.exceptions import (
 )
 
 class AccessRule(object):
-    '''Base class for access checkers.'''
+    """ Base class for access checkers. """
     
     def __call__(self, text, qtext):
         raise NotImplemented('Subclasses must implement __call__')
 
 class RegexAccessRule(AccessRule):
-    '''Access checker using regex on article text.'''
+    """ Access checker using regex on article text. """
     
     def __init__(self, regex, flags=re.I):
         self.regex = regex
@@ -32,7 +32,7 @@ class RegexAccessRule(AccessRule):
         return bool(re.search(self.regex, text, self.flags))
 
 class ElsevierAccessRule(AccessRule):
-    '''Custom black-list rule for Elsevier HTML documents.'''
+    """ Custom black-list rule for Elsevier HTML documents. """
     
     def __call__(self, text, qtext):
         return not bool(qtext('.svArticle.section'))
@@ -46,7 +46,7 @@ class ThiemeAccessRule(AccessRule):
         return not bool(full_text_tab)
 
 class DocGetter(object):
-    '''Base class for document getters.'''
+    """ Base class for document getters. """
     
     def get_link(self, cache, browser):
         """

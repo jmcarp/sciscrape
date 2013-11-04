@@ -25,8 +25,15 @@ class PubBrowser(object):
         def add(self, *a, **k): pass
         def clear(self): pass
 
-    def __init__(self, agent='sciscrape'):
-        
+    def __init__(self, agent='sciscrape', timeout=None):
+        """
+
+        :param agent: Agent string
+        :param timeout: Default timeout for open() method
+
+        """
+        self.timeout = timeout
+
         # Initialize Browser
         self._b = mechanize.Browser(history=self.NoHistory())
         
@@ -63,6 +70,8 @@ class PubBrowser(object):
     # Expose methods of self._b
 
     def open(self, url, *args, **kwargs):
+        if self.timeout and 'timeout' not in kwargs:
+            kwargs['timeout'] = self.timeout
         self._b.open(url, *args, **kwargs)
 
     @retry.retry(URLError, tries=3, default='')
@@ -77,10 +86,10 @@ class PubBrowser(object):
     
 class UMBrowser(PubBrowser):
     
-    def __init__(self, agent='sciscrape', user_file=None):
+    def __init__(self, agent='sciscrape', timeout=None, user_file=None):
         
         # Call parent __init__
-        super(UMBrowser, self).__init__(agent)
+        super(UMBrowser, self).__init__(agent, timeout)
 
         # Login to UM services
         self.login(user_file)

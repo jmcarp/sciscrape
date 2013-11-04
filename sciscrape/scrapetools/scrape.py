@@ -140,9 +140,11 @@ class Scrape(object):
     # Browser class
     _browser_klass = mechtools.PubBrowser
 
-    def __init__(self, agent='sciscrape', **kwargs):
+    def __init__(self, agent='sciscrape', timeout=None, **kwargs):
         
-        self.browser = self._browser_klass(agent=agent, **kwargs)
+        self.browser = self._browser_klass(
+            agent=agent, timeout=timeout, **kwargs
+        )
         self.info = ScrapeInfo()
     
     def scrape(self, doi=None, pmid=None, fetch_pmid=True, fetch_types=None):
