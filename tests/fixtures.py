@@ -90,4 +90,18 @@ fixtures = [
                   pmc_url='http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3806042/',
                   params=['file'],
                   ),
+    ScrapeFixture('jstage', '23474956',
+                  'https://www.jstage.jst.go.jp/article/mrms/12/1/12_2011-0006/_article',
+                  pdf_url='https://www.jstage.jst.go.jp/article/mrms/12/1/12_2011-0006/_pdf',
+                  ),
+    ScrapeFixture('apa_psychiatry', '12668352',
+                  'http://ajp.psychiatryonline.org/article.aspx?articleid=176149',
+                  html_url='http://ajp.psychiatryonline.org/article.aspx?articleid=176149',
+                  pdf_url='http://ajp.psychiatryonline.org/data/Journals/AJP/3747/667.pdf',
+                  ),
+    ScrapeFixture('maney', '22196856',
+                  'http://www.ingentaconnect.com/content/maney/nres/2012/00000034/00000001/art00002',
+                  html_url='http://docserver.ingentaconnect.com/deliver/connect/maney/01616412/v34n1/s2.html',
+                  pdf_url='http://docserver.ingentaconnect.com/deliver/connect/maney/01616412/v34n1/s2.pdf'
+    ),
 ]

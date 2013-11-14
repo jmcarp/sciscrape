@@ -86,13 +86,17 @@ class RegexMetaPubDetector(PubDetector):
         super(RegexMetaPubDetector, self).__init__(name, fun)
 
 def elsevier_detector(html):
-
     q = PyQuery(html).xhtml_to_html()
     canonical_href = q('link[rel="canonical"]').attr('href')
     if canonical_href:
         return re.search('sciencedirect', canonical_href, re.I)
-
 PubDetector('elsevier', elsevier_detector)
+
+def jstage_detector(html):
+    q = PyQuery(html).xhtml_to_html()
+    logo = q('img[alt="J-STAGE"]')
+    return bool(logo)
+PubDetector('jstage', jstage_detector)
 
 # Define detectors based on <title> tag
 TitlePubDetector('thieme', r'thieme e-journals')
@@ -104,15 +108,23 @@ TitlePubDetector('ios', r'ios press')
 # Define detectors based on <meta> tags using regex
 RegexMetaPubDetector('mit', [
     ['name', 'dc.publisher'],
-    ['content', 'mit press'],
+    ['content', 'MIT Press'],
 ])
 RegexMetaPubDetector('npg', [
     ['name', 'dc.publisher'],
-    ['content', 'nature publishing group'],
+    ['content', 'Nature Publishing Group'],
 ])
 RegexMetaPubDetector('informa', [
     ['name', 'dc.publisher'],
-    ['content', 'informa'],
+    ['content', 'Informa'],
+])
+RegexMetaPubDetector('apa_psychiatry', [
+    ['name', 'citation_publisher'],
+    ['content', 'American Psychiatric Association'],
+])
+RegexMetaPubDetector('aans', [
+    ['name', 'dc.publisher'],
+    ['content', 'American Association of Neurological Surgeons'],
 ])
 
 # Define detectors based on <meta> tags
@@ -166,4 +178,8 @@ MetaPubDetector('bmc', [
 MetaPubDetector('ieee', [
     ['name', 'citation_publisher'],
     ['content', 'IEEE'],
+])
+MetaPubDetector('maney', [
+    ['name', 'DC.publisher'],
+    ['content', 'Maney Publishing'],
 ])

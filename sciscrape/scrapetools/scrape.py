@@ -48,7 +48,7 @@ getter_map = {
 
 # Publisher-specific getters
 getter_map['html']['plos'] = getters.PassHTMLGetter
-getter_map['html']['npg'] = getters.PassHTMLGetter
+getter_map['html']['npg'] = getters.NPGHTMLGetter
 
 getter_map['html']['elsevier'] = getters.ElsevierHTMLGetter
 getter_map['pdf']['elsevier'] = getters.ElsevierPDFGetter
@@ -88,6 +88,19 @@ getter_map['html']['ios'] = getters.IOSHTMLGetter
 getter_map['pdf']['ios'] = getters.IOSPDFGetter
 
 getter_map['html']['cambridge'] = getters.CambridgeHTMLGetter
+
+# J-STAGE does not provide HTML versions
+getter_map['html']['jstage'] = None
+getter_map['pdf']['jstage'] = getters.JSTAGEPDFGetter
+
+getter_map['html']['apa_psychiatry'] = getters.APAPsychiatryHTMLGetter
+getter_map['pdf']['apa_psychiatry'] = getters.APAPsychiatryPDFGetter
+
+getter_map['html']['aans'] = getters.AANSHTMLGetter
+getter_map['pdf']['aans'] = getters.AANSPDFGetter
+
+getter_map['html']['maney'] = getters.ManeyHTMLGetter
+getter_map['pdf']['maney'] = getters.ManeyPDFGetter
 
 class ScrapeInfo(object):
     
@@ -188,14 +201,24 @@ class Scrape(object):
             # Skip documents not to be included
             if fetch_types and doc_type not in fetch_types:
                 continue
-            
-            # Browser to publisher link
-            if self.browser.geturl() != pub_link:
-                self.browser.reopen(pub_link)
 
             # Identify getter
-            getter = getter_map[doc_type][self.info.publisher]()
-            
+            getter_class = getter_map[doc_type][self.info.publisher]
+
+            # Skip if getter is set to false-y
+            if not getter_class:
+                continue
+
+            # Construct getter
+            getter = getter_class()
+
+            # Browser to publisher link
+            if self.browser.geturl() != pub_link:
+                try:
+                    self.browser.reopen(pub_link)
+                except URLError:
+                    self.info.status[doc_type] = 'Timeout'
+
             # Get document
             try:
                 # Success
@@ -215,7 +238,10 @@ class Scrape(object):
         """Follow DOI link, store HTML, and return final URL."""
         
         # Open DOI link
-        self.browser.open(urlparse.urljoin(DOI_URL, doi))
+        try:
+            self.browser.open(urlparse.urljoin(DOI_URL, doi))
+        except URLError:
+            raise BadDOIError('Timed out')
         
         # Read documents and save in ScrapeInfo
         self.info.init_html, self.info.init_qhtml = self.browser.get_docs()

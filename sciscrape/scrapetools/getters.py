@@ -47,12 +47,6 @@ class ThiemeAccessRule(AccessRule):
 
 class DocGetter(object):
     """ Base class for document getters. """
-    
-    def get_link(self, cache, browser):
-        """
-
-        """
-        pass
 
     def post_process(self, cache, browser):
         """
@@ -184,7 +178,7 @@ class PDFGetter(DocGetter):
                 return
 
     def validate(self, text):
-        
+
         return utils.ispdf(text)
 
 class PMCGetter(HTMLGetter):
@@ -443,11 +437,16 @@ class MITPDFGetter(PDFGetter):
 # Thieme Medical Publishers #
 #############################
 
-class ThiemeHTMLGetter(MetaHTMLGetter):
-
+class ThiemeGetter(DocGetter):
     _access_blacklist = [
-        ThiemeAccessRule(),
-    ] + DocGetter._access_blacklist
+        RegexAccessRule(r'Please enter your username and password.')
+    ]
+
+class ThiemeHTMLGetter(ThiemeGetter, MetaHTMLGetter):
+
+    #_access_blacklist = [
+    #    ThiemeAccessRule(),
+    #] + DocGetter._access_blacklist
 
     _attrs = [
         ['name', 'DC.relation'],
@@ -461,7 +460,7 @@ class ThiemeHTMLGetter(MetaHTMLGetter):
             re.I
         )
 
-class ThiemePDFGetter(MetaPDFGetter):
+class ThiemePDFGetter(ThiemeGetter, MetaPDFGetter):
     
     _attrs = [
         ['name', 'DC.relation'],
@@ -479,27 +478,33 @@ class ThiemePDFGetter(MetaPDFGetter):
 # Nature Publishing Group #
 ###########################
 
-class NatureGetter(DocGetter):
-
+class NPGGetter(DocGetter):
     _access_blacklist = [
         RegexAccessRule(r'To read this story in full you will need to login '
                         r'or make a payment')
     ]
 
-class NPGPDFGetter(NatureGetter, PDFGetter):
-    
+class NPGHTMLGetter(NPGGetter, PassHTMLGetter):
+    pass
+
+class NPGPDFGetter(NPGGetter, PDFGetter):
+
+    selectors = [
+        'li.download-pdf a[href$="pdf"]',
+        'a.breadcrumblink[href$="pdf"]',
+        'a[title="Download PDF"][href$=".pdf"]', # Old articles, e.g. 8657305
+        'tr a[href$=".pdf"]',                    # Old articles, e.g. 12399957
+        'a.download-pdf',
+    ]
+
     def get_link(self, cache, browser):
 
-        link1 = cache.init_qhtml('li.download-pdf a[href$="pdf"]')\
-            .attr('href')
-        if link1:
-            return link1
+        for selector in self.selectors:
+            link = cache.init_qhtml(selector).attr('href')
+            if link:
+                return link
 
-        link2 = cache.init_qhtml('a.download-pdf').attr('href')
-        if link2:
-            return link2
-
-class NatureOldGetter(NatureGetter):
+class NatureOldGetter(NPGGetter):
 
     def get_link(self, cache, browser):
         """Some old Nature articles (e.g. PMID 10862705) are routed through
@@ -576,7 +581,6 @@ class WileyHTMLGetter(MetaHTMLGetter):
 ###########
 
 class InformaGetter(DocGetter):
-
     _access_blacklist = [
         RegexAccessRule(r'you have requested the following article')
     ]
@@ -628,3 +632,75 @@ class CambridgeHTMLGetter(HTMLGetter):
         if link:
             return re.sub(r'\s', '', link)
 
+###########
+# J-STAGE #
+###########
+
+class JSTAGEPDFGetter(PDFGetter):
+
+    def get_link(self, cache, browser):
+        return cache.init_qhtml('li.icon-pdf a[href$=pdf]').attr('href')
+
+##################
+# APA-Psychiatry #
+##################
+
+class APAPsychiatryGetter(DocGetter):
+    _access_blacklist = [
+        RegexAccessRule(r'Not a subscriber?')
+    ]
+
+class APAPsychiatryHTMLGetter(APAPsychiatryGetter, PassHTMLGetter):
+    pass
+
+class APAPsychiatryPDFGetter(APAPsychiatryGetter, PDFGetter):
+
+    def get_link(self, cache, browser):
+        return cache.init_qhtml('a#scm6MainContent_hypPDFfrotoolbox')\
+            .attr('href')
+
+########
+# AANS #
+########
+
+class AANSGetter(DocGetter):
+    _access_blacklist = [
+        RegexAccessRule(r'You have requested the following article')
+    ]
+
+class AANSHTMLGetter(AANSGetter, PassHTMLGetter):
+    pass
+
+class AANSPDFGetter(AANSGetter, PDFGetter):
+
+    def get_link(self, cache, browser):
+        return cache.init_qhtml('a[href*="doi/pdf"]').attr('href')
+
+#########
+# Maney #
+#########
+
+class ManeyGetter(DocGetter):
+    _access_blacklist = [
+        RegexAccessRule(r'Buy & download fulltext article')
+    ]
+
+class ManeyHTMLGetter(ManeyGetter, HTMLGetter):
+
+    def get_link(self, cache, browser):
+        onclick = cache.init_qhtml('a[onclick*="html"]').attr('onclick')
+        if onclick:
+            match = re.search(r"'(.*?)'", onclick)
+            if match:
+                href = urlparse.urljoin(browser.geturl(), match.groups()[0])
+                return href
+
+class ManeyPDFGetter(ManeyGetter, PDFGetter):
+
+    def get_link(self, cache, browser):
+        onclick = cache.init_qhtml('a[onclick*="pdf"]').attr('onclick')
+        if onclick:
+            match = re.search(r"'(.*?)'", onclick)
+            if match:
+                href = urlparse.urljoin(browser.geturl(), match.groups()[0])
+                return href
