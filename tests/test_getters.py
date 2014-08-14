@@ -83,3 +83,4 @@ class TestGetters(unittest.TestCase):
 
         # Check download link
         assert_true(equal_cleaned(self.browser.geturl(), expected_url), *params)
+

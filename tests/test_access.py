@@ -14,10 +14,10 @@ params = [
 
     # Highwire
     ('highwire_access', 'highwire', 'http://cercor.oxfordjournals.org/content/23/7/1572.abstract', True),
-    ('highwire_no_access', 'highwire', 'http://cercor.oxfordjournals.org/content/23/7/1509.abstract', False),
+    ('highwire_no_access', 'highwire', 'http://cercor.oxfordjournals.org/content/24/9/2297.abstract', False),
 
     # Wiley
-    ('wiley_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21406/full', True),
+    ('wiley_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.22150/full', True),
     ('wiley_no_access', 'wiley', 'http://onlinelibrary.wiley.com/doi/10.1002/hbm.21440/abstract', False),
 
     # Springer
@@ -29,8 +29,8 @@ params = [
     ('thieme_no_access', 'thieme', 'https://www.thieme-connect.com/DOI/DOI?10.1055/s-2008-1071333', False),
 
     # Wolters Kluwer
-    ('wolterskluwer_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm?issn=0959-4965&volume=24&issue=14&spage=763', True),
-    ('wolterskluwer_no_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm?issn=0959-4965&volume=24&issue=14&spage=768', False),
+    ('wolterskluwer_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm;jsessionid=TtBHlTny2RTlkdpbQKLH32QrRThGzQGtZ41d8j04mQXvsKNsMN5h!-773986214!181195628!8091!-1?issn=0959-4965&volume=25&issue=13&spage=1038', True),
+    ('wolterskluwer_no_access', 'wolterskluwer', 'http://pt.wkhealth.com/pt/re/lwwgateway/landingpage.htm;jsessionid=TtDXBnQxQ5KKcmtJWW8rZpykZyNTQgnT3GXJYnFD5Nn6TkmyRJG0!-773986214!181195628!8091!-1?issn=0959-4965&volume=24&issue=14&spage=768', False),
 
     # IEEE
     ('ieee_access', 'ieee', 'http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6527311', True),
@@ -49,8 +49,8 @@ params = [
     ('apa_psychiatry_no_access', 'apa_psychiatry', 'http://ajp.psychiatryonline.org/article.aspx?articleid=1712527', False),
 
     # Maney
-    ('maney_access', 'maney', 'http://www.ingentaconnect.com/content/maney/nres/2012/00000034/00000001/art00002', True),
-    ('maney_no_access', 'maney', 'http://www.ingentaconnect.com/content/maney/nres/2001/00000023/F0020002/art00015', False),
+    ('maney_access', 'maney', 'http://www.maneyonline.com/doi/full/10.1179/1743132811Y.0000000049', True),
+    ('maney_no_access', 'maney', 'http://www.maneyonline.com/doi/full/10.1179/1743132814Y.0000000337', False),
 
 ]
 

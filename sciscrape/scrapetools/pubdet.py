@@ -20,52 +20,52 @@ def pubdet(html):
 
 class PubDetector(object):
     '''Detect publisher based on arbitrary function.'''
-    
+
     # Initialize detector registry
     registry = {}
 
     def __init__(self, name, fun):
         '''Bind function to detect() method, then add self
         to registry.'''
-        
+
         self.detect = fun
         PubDetector.registry[name] = self
 
 class TitlePubDetector(PubDetector):
     '''Detect publisher based on <title> tag.'''
-    
+
     def __init__(self, name, regex, flags=re.I):
-        
+
         # Build detector function
         def fun(html):
             title = PyQuery(html).xhtml_to_html()('title')
             if title:
                 return bool(re.search(regex, title.text(), flags))
             return False
-        
+
         # Call super constructor
         super(TitlePubDetector, self).__init__(name, fun)
 
 class MetaPubDetector(PubDetector):
     '''Detect publisher based on <meta> tags.'''
-    
+
     def __init__(self, name, attrs, opers='='):
-        
+
         # Build detector function
         def fun(html):
             return bool(PyQuery(html).xhtml_to_html()(utils.build_query(
                 'meta', attrs, opers
             )))
-        
+
         # Call super constructor
         super(MetaPubDetector, self).__init__(name, fun)
 
 class RegexMetaPubDetector(PubDetector):
-    
+
     _flags = re.I
 
     def __init__(self, name, attrs):
-        
+
         def fun(html):
 
             q = PyQuery(html).xhtml_to_html()('meta')
@@ -126,6 +126,11 @@ RegexMetaPubDetector('aans', [
     ['name', 'dc.publisher'],
     ['content', 'American Association of Neurological Surgeons'],
 ])
+RegexMetaPubDetector('maney', [
+    ['name', 'dc.publisher'],
+    ['content', 'Maney Publishing'],
+])
+
 
 # Define detectors based on <meta> tags
 MetaPubDetector('highwire', [
@@ -178,8 +183,4 @@ MetaPubDetector('bmc', [
 MetaPubDetector('ieee', [
     ['name', 'citation_publisher'],
     ['content', 'IEEE'],
-])
-MetaPubDetector('maney', [
-    ['name', 'DC.publisher'],
-    ['content', 'Maney Publishing'],
 ])

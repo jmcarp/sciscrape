@@ -15,15 +15,16 @@ from sciscrape.exceptions import (
     NotFoundError, NoAccessError, BadDocumentError
 )
 
+# TODO: Move access rules
 class AccessRule(object):
     """ Base class for access checkers. """
-    
+
     def __call__(self, text, qtext):
         raise NotImplemented('Subclasses must implement __call__')
 
 class RegexAccessRule(AccessRule):
     """ Access checker using regex on article text. """
-    
+
     def __init__(self, regex, flags=re.I):
         self.regex = regex
         self.flags = flags
@@ -33,7 +34,7 @@ class RegexAccessRule(AccessRule):
 
 class ElsevierAccessRule(AccessRule):
     """ Custom black-list rule for Elsevier HTML documents. """
-    
+
     def __call__(self, text, qtext):
         return not bool(qtext('.svArticle.section'))
 
@@ -59,12 +60,12 @@ class DocGetter(object):
 
         """
         return True
-    
+
     # Access white-list functions
     _access_whitelist = [
         RegexAccessRule('identitieswelcome'),
     ]
-    
+
     # Access black-list functions
     _access_blacklist = [
         RegexAccessRule(r'why don\'t i have access'),
@@ -83,7 +84,7 @@ class DocGetter(object):
 
     def check_access(self, text, qtext):
         """ Check whether we have access to an article. """
-        
+
         # Check white-list functions
         for wfun in self._access_whitelist:
             if wfun(text, qtext):
@@ -99,7 +100,7 @@ class DocGetter(object):
 
     def get(self, cache, browser):
         """ Download document, then store in cache. """
-        
+
         # Get document link
         link = self.get_link(cache, browser)
         if not link:
@@ -112,7 +113,7 @@ class DocGetter(object):
             cache.html, cache.qhtml = browser.get_docs()
         else:
             cache.html, cache.qhtml = cache.init_html, cache.init_qhtml
-        
+
         # Run optional post-processing steps
         self.post_process(cache, browser)
 
@@ -123,16 +124,17 @@ class DocGetter(object):
         # Validate result
         if not self.validate(cache.html):
             raise BadDocumentError('Bad document')
-        
+
         return True
-    
+
     @retry.retry(Exception)
     def reget(self, cache, browser):
         return self.get(cache, browser)
 
 class MetaGetter(DocGetter):
-    """ Base class for getters that use <meta> tags. """
-    
+    """Base class for getters that use <meta> tags.
+
+    """
     _attrs = []
     _filter = None
 
@@ -153,16 +155,17 @@ class MetaGetter(DocGetter):
         raise NotFoundError('Link not found')
 
 class HTMLGetter(DocGetter):
-    '''Base class for HTML getters.'''
+    """Base class for HTML getters.
 
+    """
     def validate(self, text):
-        
+
         return not utils.ispdf(text)
 
 class PDFGetter(DocGetter):
-    
+
     def post_process(self, cache, browser):
-        
+
         # Quit if valid PDF
         if self.validate(cache.html):
             return
@@ -196,13 +199,13 @@ class PMCGetter(HTMLGetter):
         return self.get(cache, browser)
 
 class MetaHTMLGetter(MetaGetter, HTMLGetter):
-    
+
     _attrs = [
         ['name', 'citation_fulltext_html_url'],
     ]
 
 class MetaPDFGetter(MetaGetter, PDFGetter):
-    
+
     _attrs = [
         ['name', 'citation_pdf_url'],
     ]
@@ -221,13 +224,13 @@ class PassHTMLGetter(HTMLGetter):
 ############
 
 class ElsevierHTMLGetter(HTMLGetter):
-    
+
     _access_blacklist = [
         ElsevierAccessRule(),
     ] + DocGetter._access_blacklist
 
     def get_link(self, cache, browser):
-        
+
         redirect_links = cache.init_qhtml('a[role="button"]').filter(
             lambda: re.search('screen reader', PyQuery(this).text(), re.I)
         )
@@ -235,9 +238,9 @@ class ElsevierHTMLGetter(HTMLGetter):
             return PyQuery(redirect_links[0]).attr('href')
 
 class ElsevierPDFGetter(PDFGetter):
-    
+
     def get_link(self, cache, browser):
-        
+
         return cache.init_qhtml('a#pdfLink')\
             .attr('pdfurl')
 
@@ -246,16 +249,16 @@ class ElsevierPDFGetter(PDFGetter):
 ####################
 
 class TaylorFrancisHTMLGetter(HTMLGetter):
-    
+
     def get_link(self, cache, browser):
-        
+
         return cache.init_qhtml('div.access a.txt')\
             .attr('href')
 
 class TaylorFrancisPDFGetter(PDFGetter):
-    
+
     def get_link(self, cache, browser):
-        
+
         return cache.init_qhtml('div.access a.pdf')\
             .attr('href')
 
@@ -272,17 +275,17 @@ class APAGetter(DocGetter):
 
     def open_splash(self, cache, browser):
         '''Browse to APA splash page for article.'''
-        
+
         # Get link to abstract from starting page
         abstract_link = cache.init_qhtml(utils.build_query(
-            'meta', 
+            'meta',
             [['name', 'citation_abstract_html_url']]
         )).attr('content')
-        
+
         # Get APA Accession Number from link
         apa_id_raw = abstract_link.split('journals')[-1].strip('/')
         apa_id = 'AN %s' % (apa_id_raw.replace('/', '-'))
-        
+
         # Open APA search page
         browser.open('http://www.lib.umich.edu/database/link/27957')
         html, qhtml = browser.get_docs()
@@ -291,37 +294,37 @@ class APAGetter(DocGetter):
         action_str = qhtml('#SearchButton').attr('data-formsubmit')
         action_dict = json.loads(action_str)
         action_url = urlparse.urljoin(browser.geturl(), action_dict['action'])
-        
+
         # Submit search form
         browser._b.select_form(nr=0)
         browser._b.form.action = action_url
-        browser._b['GuidedSearchFormData[1].SearchTerm'] = apa_id 
+        browser._b['GuidedSearchFormData[1].SearchTerm'] = apa_id
         browser._b.submit(type='submit')
-        
+
 class APAHTMLGetter(APAGetter, HTMLGetter):
-    
+
     def get_link(self, cache, browser):
-        
+
         # Open splash page
         self.open_splash(cache, browser)
         html, qhtml = browser.get_docs()
-        
+
         # Return full-text HTML link
         return qhtml('[title^="HTML Full Text"]').attr('href')
 
 class APAPDFGetter(APAGetter, PDFGetter):
-    
+
     def get_link(self, cache, browser):
-        
+
         # Open splash page
         self.open_splash(cache, browser)
         html, qhtml = browser.get_docs()
-        
+
         # Open PDF wrapper page
         pdf_wrap_link = qhtml('[title^="PDF Full Text"]').attr('href')
         browser.open(pdf_wrap_link)
         html, qhtml = browser.get_docs()
-        
+
         # Return full-text PDF link
         return qhtml('#pdfUrl').attr('value')
         #return qhtml('iframe#pdfIframe').attr('src')
@@ -334,9 +337,12 @@ class WoltersKluwerGetter(DocGetter):
 
     _base_url = 'http://content.wkhealth.com/linkback/openurl'
     _params = ['issn', 'volume', 'issue', 'spage']
+    _access_blacklist = [
+        RegexAccessRule(r'You could be reading the full-text of this article now'),
+    ]
 
     def get_link(self, cache, browser):
-        
+
         # Parse welcome URL
         url = browser.geturl()
         parsed_url = urlparse.urlparse(url)
@@ -360,7 +366,7 @@ class WoltersKluwerGetter(DocGetter):
         )
 
 class WoltersKluwerHTMLGetter(WoltersKluwerGetter, MetaHTMLGetter):
-    
+
     _attrs = [
         ['name', 'wkhealth_fulltext_html_url'],
     ]
@@ -404,9 +410,9 @@ class WoltersKluwerPDFGetter(WoltersKluwerGetter, PDFGetter):
 #############
 
 class MITHTMLGetter(HTMLGetter):
-    
+
     def get_link(self, cache, browser):
-        
+
         a = cache.init_qhtml('a.header4[href]').filter(
             lambda: re.search('/full/', PyQuery(this).attr('href'), re.I)
         )
@@ -419,7 +425,7 @@ class MITHTMLGetter(HTMLGetter):
             raise NotFoundError('Link not found')
 
 class MITPDFGetter(PDFGetter):
-    
+
     def get_link(self, cache, browser):
 
         a = cache.init_qhtml('a.header4[href]').filter(
@@ -442,37 +448,33 @@ class ThiemeGetter(DocGetter):
         RegexAccessRule(r'Please enter your username and password.')
     ]
 
-class ThiemeHTMLGetter(ThiemeGetter, MetaHTMLGetter):
+class ThiemeHTMLGetter(ThiemeGetter):
 
     #_access_blacklist = [
     #    ThiemeAccessRule(),
     #] + DocGetter._access_blacklist
 
-    _attrs = [
-        ['name', 'DC.relation'],
-    ]
+    # TODO: Abstract me
+    def get_link(self, cache, browser):
+        meta_format = cache.init_qhtml('meta[name="DC.format"][content="XML"]')
+        if not meta_format:
+            return None
+        meta_relation = meta_format.next('meta[name="DC.relation"][content]')
+        if not meta_relation:
+            return None
+        return meta_relation.attr('content')
 
-    @staticmethod
-    def _filter():
-        return re.search(
-            '\d$', 
-            PyQuery(this).attr('content'), 
-            re.I
-        )
+class ThiemePDFGetter(ThiemeGetter):
 
-class ThiemePDFGetter(ThiemeGetter, MetaPDFGetter):
-    
-    _attrs = [
-        ['name', 'DC.relation'],
-    ]
-
-    @staticmethod
-    def _filter():
-        return re.search(
-            '\.pdf$', 
-            PyQuery(this).attr('content'), 
-            re.I
-        )
+    def get_link(self, cache, browser):
+        meta_format = cache.init_qhtml('meta[name="DC.format"][content="PDF"]')
+        if not meta_format:
+            return None
+        meta_relation = meta_format.next('meta[name="DC.relation"][content]')
+        if not meta_relation:
+            return None
+        link = meta_relation.attr('content')
+        return urllib.unquote(link)
 
 ###########################
 # Nature Publishing Group #
@@ -682,25 +684,19 @@ class AANSPDFGetter(AANSGetter, PDFGetter):
 
 class ManeyGetter(DocGetter):
     _access_blacklist = [
-        RegexAccessRule(r'Buy & download fulltext article')
+        RegexAccessRule(r'Please select one of the following purchase options '
+                        r'for immediate online access'),
     ]
 
 class ManeyHTMLGetter(ManeyGetter, HTMLGetter):
 
     def get_link(self, cache, browser):
-        onclick = cache.init_qhtml('a[onclick*="html"]').attr('onclick')
-        if onclick:
-            match = re.search(r"'(.*?)'", onclick)
-            if match:
-                href = urlparse.urljoin(browser.geturl(), match.groups()[0])
-                return href
+        return cache.init_qhtml(
+            'div.publication-tabs ul.tab-nav a[href*="/full/"]'
+        ).attr('href')
 
 class ManeyPDFGetter(ManeyGetter, PDFGetter):
 
     def get_link(self, cache, browser):
-        onclick = cache.init_qhtml('a[onclick*="pdf"]').attr('onclick')
-        if onclick:
-            match = re.search(r"'(.*?)'", onclick)
-            if match:
-                href = urlparse.urljoin(browser.geturl(), match.groups()[0])
-                return href
+        return cache.init_qhtml('div.contentLink a[href*="/pdf"]').attr('href')
+

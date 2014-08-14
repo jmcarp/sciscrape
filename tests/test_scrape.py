@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+
+from __future__ import division
+
 import unittest
 from nose.tools import *
 from nose_parameterized import parameterized
@@ -20,7 +24,7 @@ def diff_ratio(txt1, txt2):
         for diff in diffs
         if diff[0] != 0
     ])
-    avg_txt_length = (len(txt1) + len(txt2)) / 2.0
+    avg_txt_length = (len(txt1) + len(txt2)) / 2
     return num_diff_chars / avg_txt_length
 
 class TestScrapeMethods(unittest.TestCase):
@@ -55,6 +59,12 @@ class TestScrapeOpen(unittest.TestCase):
             assert_in(document_type, info.docs)
             diff = diff_ratio(
                 info.docs[document_type],
-                open(os.path.join(FIXTURE_PATH, '23638070', '23638070.{}'.format(document_type))).read()
+                open(
+                    os.path.join(
+                        FIXTURE_PATH,
+                        '23638070',
+                        '23638070.{}'.format(document_type)),
+                ).read()
             )
             assert_less(diff, MAX_DIFF)
+
