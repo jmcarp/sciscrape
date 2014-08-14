@@ -6,7 +6,7 @@ the sciscrape package.
 # Imports
 import os, errno
 import re
-import pyPdf
+import PyPDF2
 import tempfile
 
 # From http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
@@ -27,12 +27,12 @@ def build_query(tag, attrs, operators='='):
         operators (list) : list of operator strings
     Returns:
         query
-    
+
     > build_query('meta', [['name', 'citation_author]], ['^='])
     'meta[name^="citation_author"]'
 
     '''
-    
+
     # Initialize query
     query = tag
 
@@ -49,22 +49,22 @@ def build_query(tag, attrs, operators='='):
     return query
 
 def ispdf(text):
-    '''Check whether document is a PDF.'''
-    
+    """Check whether document is a PDF.
+
+    """
     # Write text to temporary file
     tmp = tempfile.TemporaryFile()
     tmp.write(text)
 
-    # Check PDF using pyPdf
+    # Check PDF using PyPDF2
     try:
-        _ = pyPdf.PdfFileReader(tmp)
+        PyPDF2.PdfFileReader(tmp)
         return True
     except:
         pass
 
-    # Check PDF using header
+    # Check PDF header
+    return text[:4].lower() == '%pdf'
     if re.search('^%pdf', text, re.I):
         return True
 
-    # Not a PDF
-    return False
