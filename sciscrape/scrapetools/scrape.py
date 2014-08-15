@@ -25,6 +25,8 @@ from sciscrape.utils import pmid_doi
 from sciscrape.utils import retry
 from sciscrape.exceptions import ScrapeError, BadDOIError
 
+logger = logging.getLogger(__name__)
+
 # Set email
 pubtools.email = 'foo@bar.com'
 
@@ -103,9 +105,9 @@ getter_map['html']['maney'] = getters.ManeyHTMLGetter
 getter_map['pdf']['maney'] = getters.ManeyPDFGetter
 
 class ScrapeInfo(object):
-    
+
     def __init__(self, doi=None, pmid=None):
-        
+
         # Initialize identifiers
         self.doi = doi
         self.pmid = pmid
@@ -113,7 +115,7 @@ class ScrapeInfo(object):
         # Initialize documents
         self.docs = {}
         self.status = {}
-    
+
     @property
     def pretty_status(self):
         return '; '.join(['%s: %s' % (k, self.status[k]) for k in self.status])
@@ -154,12 +156,12 @@ class Scrape(object):
     _browser_klass = mechtools.PubBrowser
 
     def __init__(self, agent='sciscrape', timeout=None, **kwargs):
-        
+
         self.browser = self._browser_klass(
             agent=agent, timeout=timeout, **kwargs
         )
         self.info = ScrapeInfo()
-    
+
     def scrape(self, doi=None, pmid=None, fetch_pmid=True, fetch_types=None):
         """Download documents for a target article.
 
@@ -169,18 +171,21 @@ class Scrape(object):
         :return: ScrapeInfo instance
 
         """
+        logger.info('Fetching article with DOI={0}, PMID={1}'.format(
+            doi, pmid,
+        ))
         # Initialize ScrapeInfo object to store results
         self.info = ScrapeInfo(doi, pmid)
-        
+
         # Get publisher link
         pub_link = None
         if doi:
             try:
                 pub_link = self._resolve_doi(doi)
             except BadDOIError:
-                logging.debug('Could not resolve DOI {}'.format(doi))
+                logger.info('Could not resolve DOI {}'.format(doi))
             if not pmid and fetch_pmid:
-                logging.debug('Looking up PMID by DOI')
+                logger.info('Looking up PMID by DOI')
                 self.info.pmid = pmid_doi.pmid_doi({'doi': doi})['pmid']
         if pmid and not pub_link:
             pub_link = self._resolve_pmid(pmid)
@@ -188,10 +193,10 @@ class Scrape(object):
         # Quit if no publisher link found
         if not pub_link:
             raise ScrapeError('No publisher link found')
-        
+
         # Log publisher link to ScrapeInfo
         self.info.pub_link = pub_link
-        
+
         # Detect publisher
         self.info.publisher = pubdet.pubdet(self.info.init_html)
 
@@ -228,7 +233,7 @@ class Scrape(object):
             except Exception as error:
                 # Failure
                 self.info.status[doc_type] = repr(error)
-        
+
         # Return ScrapeInfo object
         return self.info
 
@@ -236,29 +241,29 @@ class Scrape(object):
     @retry.retry((HTTPError, HTTPException, URLError), tries=3, default='')
     def _resolve_doi(self, doi):
         """Follow DOI link, store HTML, and return final URL."""
-        
+
         # Open DOI link
         try:
             self.browser.open(urlparse.urljoin(DOI_URL, doi))
         except URLError:
             raise BadDOIError('Timed out')
-        
+
         # Read documents and save in ScrapeInfo
         self.info.init_html, self.info.init_qhtml = self.browser.get_docs()
-        
+
         # Check for bad DOI
         if self.info.init_qhtml:
             title_text = self.info.init_qhtml('title').text()
             if title_text and re.search(r'doi not found', title_text, re.I):
                 raise BadDOIError(doi)
-        
+
         # Return URL
         return self.browser.geturl()
 
     @retry.retry((HTTPError, HTTPException, URLError), tries=3, default='')
     def _resolve_pmid(self, pmid):
         """Follow PMID link, store HTML, and return final URL."""
-        
+
         # Get DOI from PubMed API
         pub_data = pubtools.download_pmids([pmid])[0]
         doi = pubtools.record_to_doi(pub_data)
@@ -266,7 +271,7 @@ class Scrape(object):
             return self._resolve_doi(doi)
 
         pub_link = pubtools.pmid_to_publisher_link(pmid)
-        
+
         # Follow publisher link
         if pub_link:
 
@@ -280,5 +285,5 @@ class Scrape(object):
             return self.browser.geturl()
 
 class UMScrape(Scrape):
-    
+
     _browser_klass = mechtools.UMBrowser
